@@ -1291,14 +1291,19 @@ function openInNewWindow(pnu) {
 function toggleMobileSheet() {
   var $side = $("#sidePanel");
   var $toggle = $("#sheetPullToggle");
-  // 패널이 접혀있으면 펼치기, 펼쳐있으면 접기
+  var $mapArea = $(".map-area");
   if ($side.hasClass("sheet-collapsed")) {
+    // 펼치기 → 지도 55vh 복원
     $side.removeClass("sheet-collapsed");
-    $toggle.text("▼"); // 열린 상태 → 클릭 시 닫힘
+    $toggle.text("▼");
+    $mapArea.css("height", "55vh");
   } else {
+    // 접기 → 지도 전체화면
     $side.addClass("sheet-collapsed");
-    $toggle.text("▲"); // 닫힌 상태 → 클릭 시 열림
+    $toggle.text("▲");
+    $mapArea.css("height", "calc(100vh - 44px)");
   }
+  setTimeout(function() { try { map2d.updateSize(); } catch(e) {} }, 320);
 }
 
 function autoOpenMobileSheet() {
@@ -1306,6 +1311,8 @@ function autoOpenMobileSheet() {
     // 패널이 접혀있으면 펼치기 (기본: 항상 열려있음)
     $("#sidePanel").removeClass("sheet-collapsed");
     $("#sheetPullToggle").text("▼");
+    $(".map-area").css("height", "55vh");
+    setTimeout(function() { try { map2d.updateSize(); } catch(e) {} }, 320);
   }
 }
 
@@ -1582,24 +1589,14 @@ function setupEvents() {
   $(document).on('scroll', '#mobLandTableWrap', function(){
     if ($(this).scrollLeft() > 20) $(this).css('--mob-hint','0');
   });
-  // 모바일 테이블 행 클릭 → 해당 토지 지도에서 확인
+  // 모바일 테이블 행 클릭 → 해당 토지 지도에서 확인 (패널 유지)
   $(document).on('click', '#mobLandTbody tr', function(e) {
     if ($(e.target).hasClass('mob-del-btn')) return;
     var pnu = $(this).data('pnu');
     var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
     if (!d || !d._lon || !d._lat) return;
     var label = [d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
-    if (window.innerWidth <= 768) {
-      // 패널 먼저 접은 뒤 (CSS transition 300ms) updateSize → 지도 이동
-      $("#sidePanel").addClass("sheet-collapsed");
-      $("#sheetPullToggle").text("▲");
-      setTimeout(function() {
-        try { map2d.updateSize(); } catch(e2) {}
-        moveTo(d._lon, d._lat);
-      }, 320);
-    } else {
-      moveTo(d._lon, d._lat);
-    }
+    moveTo(d._lon, d._lat);
     showMsg("📍 " + label + " 위치로 이동", "ok");
   });
   document.addEventListener('scroll', function(e){

@@ -169,6 +169,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     cursor:pointer;
     flex-shrink:0;
     border-radius:16px 16px 0 0;
+    order:1;
   }
   .sheet-pull-bar{
     flex-shrink:0;width:36px;height:4px;
@@ -187,7 +188,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   .opt-table,.footer{display:none!important;}
 
   /* 주제도 패널: 모바일 컴팩트 */
-  .theme-panel{padding:3px 8px;border-bottom:1px solid #e0e4f0;}
+  .theme-panel{padding:3px 8px;border-bottom:1px solid #e0e4f0;order:10;}
   .theme-hd-title{font-size:11px;}
   .toggle-btn{padding:2px 7px;font-size:10px;}
   #themeList{max-height:90px;}
@@ -197,18 +198,21 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   .ecvam-legend{padding:2px 8px 4px;}
 
   /* 검색 */
-  .search-row{padding:5px 8px;gap:4px;}
+  .search-row{padding:5px 8px;gap:4px;order:2;}
   .search-row input{padding:5px 8px;font-size:12px;}
   .search-row button{padding:5px 8px;font-size:12px;}
 
   /* 버튼 */
-  .btn-row{padding:4px 8px;gap:4px;}
+  .btn-row{padding:4px 8px;gap:4px;order:8;}
   .btn-row button{padding:5px 2px;font-size:10px;}
 
+  /* 상태 메시지 */
+  .status-bar{order:3;}
+
   /* 카운트/면적 */
-  .cnt-bar{padding:4px 10px;}
+  .cnt-bar{padding:4px 10px;order:5;}
   .cnt-bar .ttl{font-size:11px;}
-  .area-sum-bar{padding:4px 10px;}
+  .area-sum-bar{padding:4px 10px;order:6;}
   .area-sum-label{font-size:11px;}
   .area-sum-val{font-size:12px;}
 
@@ -218,6 +222,8 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     -webkit-overflow-scrolling:touch;
     overflow-y:scroll;
     overscroll-behavior:contain;
+    order:4;
+    flex:1;
   }
 
   /* ── 모바일: 카드 숨기고 테이블만 표시 ── */

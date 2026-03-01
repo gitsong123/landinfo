@@ -1525,8 +1525,8 @@ function searchParcel(q, _fallback) {
 
 function moveTo(lon, lat) {
   if (currentMapType === "2d") {
-    map2d.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
-    map2d.getView().setZoom(19);
+    try { map2d.updateSize(); } catch(e) {}
+    map2d.getView().animate({ center: ol.proj.fromLonLat([lon, lat]), zoom: 18, duration: 400 });
   } else {
     map3d.moveTo(new vw.CameraPosition(
       new vw.CoordZ(lon, lat, 800),
@@ -1588,12 +1588,18 @@ function setupEvents() {
     var pnu = $(this).data('pnu');
     var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
     if (!d || !d._lon || !d._lat) return;
-    moveTo(d._lon, d._lat);
+    var label = [d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
     if (window.innerWidth <= 768) {
+      // 패널 먼저 접은 뒤 (CSS transition 300ms) updateSize → 지도 이동
       $("#sidePanel").addClass("sheet-collapsed");
       $("#sheetPullToggle").text("▲");
+      setTimeout(function() {
+        try { map2d.updateSize(); } catch(e2) {}
+        moveTo(d._lon, d._lat);
+      }, 320);
+    } else {
+      moveTo(d._lon, d._lat);
     }
-    var label = [d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
     showMsg("📍 " + label + " 위치로 이동", "ok");
   });
   document.addEventListener('scroll', function(e){

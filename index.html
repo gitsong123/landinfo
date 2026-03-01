@@ -368,7 +368,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
         <span class="area-sum-label">📐 <span id="areaCnt">0</span>필지 면적 합계</span>
         <span class="area-sum-val" id="areaSumVal">0 ㎡</span>
       </div>
-      <div id="jigaSumRow" style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(26,95,168,0.2); pt:4px; margin-top:2px;">
+      <div id="jigaSumRow" style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(26,95,168,0.2); padding-top:4px; margin-top:2px;">
         <span class="area-sum-label">💰 공시지가 총액</span>
         <span class="area-sum-val" id="jigaSumVal" style="color:#e67e22;">0 원</span>
       </div>
@@ -497,6 +497,29 @@ $(document).ready(function() {
 
   // 기본 위치: 경기도 광주시 태전동 744번지
   activateLandParcel();
+
+  // 사용자 현재 위치로 지도 이동
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        var lon = pos.coords.longitude;
+        var lat = pos.coords.latitude;
+        try {
+          map2d.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+          map2d.getView().setZoom(17);
+          try {
+            map3d.moveTo(new vw.CameraPosition(
+              new vw.CoordZ(lon, lat, 500),
+              new vw.Direction(0, -90, 0)
+            ));
+          } catch(e3){}
+        } catch(e){}
+        showMsg("📍 현재 위치로 지도를 이동했습니다.", "ok");
+      },
+      function() { /* 위치 거부 또는 오류 시 기본 위치 유지 */ },
+      { timeout: 8000, maximumAge: 60000 }
+    );
+  }
 
   function activateLandParcel() {
     $("#landChk").prop("checked", true);
@@ -1233,6 +1256,10 @@ function addLandInfo(d) {
   $kv.append(kv('지목', d.jimok));
   $kv.append(kv('면적', areaDisp + ' ㎡'));
   $kv.append(kv('공시지가', fmt(d.jiga) !== '-' ? fmt(d.jiga) + ' 원/㎡' : '-'));
+  var _jigoNum = parseFloat(String(d.jiga || '').replace(/,/g, ''));
+  var _areaNum = parseFloat(rawArea || 0);
+  var _jigaTotal = (!isNaN(_jigoNum) && _jigoNum > 0 && !isNaN(_areaNum) && _areaNum > 0) ? Math.round(_areaNum * _jigoNum) : null;
+  $kv.append('<div class="land-kv-row"><span class="land-kv-k">토지 공시지가 총액</span><span class="land-kv-v" style="color:#e67e22;font-weight:800;">' + escHtml(_jigaTotal ? _jigaTotal.toLocaleString('ko-KR') + ' 원' : '-') + '</span></div>');
   $kv.append('<div class="land-kv-sec">🏗 용도계획</div>');
   $kv.append(kv('용도지역', d.uname));
   $kv.append(kv('지구단위계획', d.dgm_nm));
@@ -1266,6 +1293,10 @@ function openInNewWindow(pnu) {
   var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
   var fmt = function(v){ return (v && v !== '-' && !isNaN(v)) ? Number(v).toLocaleString() : (v || '-'); };
 
+  var _area2 = parseFloat(d.area_ || d.parea || 0);
+  var _jiga2 = parseFloat(String(d.jiga || '').replace(/,/g, ''));
+  var _jigaTotal2 = (!isNaN(_area2) && _area2 > 0 && !isNaN(_jiga2) && _jiga2 > 0) ? Math.round(_area2 * _jiga2) : null;
+
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>' + addr + ' - 토지정보</title>' +
@@ -1291,6 +1322,7 @@ function openInNewWindow(pnu) {
     '<tr><td>면적(㎡)</td><td>' + fmt(d.area_||d.parea) + '</td></tr>' +
     '<tr><td class="sec" colspan="2">💰 공시 정보</td></tr>' +
     '<tr><td>공시지가(원/㎡)</td><td>' + fmt(d.jiga) + '</td></tr>' +
+    '<tr><td>토지 공시지가 총액</td><td style="color:#e67e22;font-weight:700;">' + (_jigaTotal2 ? _jigaTotal2.toLocaleString('ko-KR') + ' 원' : '-') + '</td></tr>' +
     '<tr><td class="sec" colspan="2">🏗 용도계획정보</td></tr>' +
     '<tr><td>용도지역</td><td>' + (d.uname||'-') + '</td></tr>' +
     '<tr><td>지구단위계획구역</td><td>' + (d.dgm_nm||'-') + '</td></tr>' +
@@ -1606,12 +1638,19 @@ function openTableWindow() {
   var totalArea = collectedLandInfo.reduce(function(s, d){
     return s + (parseFloat(d.area_ || d.parea || 0) || 0);
   }, 0);
+  var totalJigaWin = collectedLandInfo.reduce(function(s, d){
+    var a = parseFloat(d.area_ || d.parea || 0) || 0;
+    var j = parseFloat(String(d.jiga || '').replace(/,/g,'')) || 0;
+    return s + (j > 0 ? Math.round(a * j) : 0);
+  }, 0);
   var cnt = collectedLandInfo.length;
 
   var rows = collectedLandInfo.map(function(d, i) {
     var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).map(escHtml).join(' ');
     var area = parseFloat(d.area_ || d.parea || 0);
     var areaDisp = isNaN(area) ? '-' : Math.round(area).toLocaleString();
+    var jigaNum = parseFloat(String(d.jiga || '').replace(/,/g,''));
+    var jigaTotalDisp = (!isNaN(area) && area > 0 && !isNaN(jigaNum) && jigaNum > 0) ? Math.round(area * jigaNum).toLocaleString('ko-KR') + ' 원' : '-';
     var safePnu = escAttr(d.pnu);
     return '<tr data-pnu="' + safePnu + '">' +
       '<td>' + (i + 1) + '</td>' +
@@ -1619,6 +1658,7 @@ function openTableWindow() {
       '<td>' + escHtml(d.jimok || '-') + '</td>' +
       '<td class="ar">' + areaDisp + '</td>' +
       '<td class="ar">' + escHtml(fmt(d.jiga)) + '</td>' +
+      '<td class="ar" style="color:#c0392b;font-weight:700;">' + jigaTotalDisp + '</td>' +
       '<td>' + escHtml(d.uname || '-') + '</td>' +
       '<td>' + escHtml(d.dgm_nm || '-') + '</td>' +
       '<td><button class="btn-del" onclick="deleteRow(\'' + safePnu + '\',this)">삭제</button></td>' +
@@ -1674,28 +1714,37 @@ function openTableWindow() {
       '<div class="sum-card"><div class="sum-label">총 필지 수</div><div class="sum-val" id="sumCnt">' + cnt + ' 필지</div></div>' +
       '<div class="sum-card"><div class="sum-label">면적 합계</div><div class="sum-val" id="sumArea">' + Math.round(totalArea).toLocaleString() + ' ㎡</div>' +
         '<div class="sum-sub" id="sumPyeong">≈ ' + Math.round(totalArea * 0.3025).toLocaleString() + ' 평</div></div>' +
+      '<div class="sum-card" style="border-left-color:#e67e22;"><div class="sum-label">공시지가 총액</div><div class="sum-val" id="sumJiga" style="color:#c0392b;">' + totalJigaWin.toLocaleString('ko-KR') + ' 원</div></div>' +
     '</div>' +
     '<div class="tbl-wrap"><table>' +
     '<thead><tr><th>순번</th><th>주소</th><th>지목</th><th>면적(㎡)</th>' +
-      '<th>공시지가(원/㎡)</th><th>용도지역</th><th>지구단위계획구역</th><th>삭제</th>' +
+      '<th>공시지가(원/㎡)</th><th>공시지가 총액(원)</th><th>용도지역</th><th>지구단위계획구역</th><th>삭제</th>' +
     '</tr></thead>' +
     '<tbody id="tbl-body">' + rows + '</tbody>' +
     '<tfoot><tr>' +
       '<td colspan="3" style="text-align:right;">합  계</td>' +
       '<td id="footArea" style="text-align:right;">' + Math.round(totalArea).toLocaleString() + '</td>' +
-      '<td colspan="4"></td>' +
+      '<td></td>' +
+      '<td id="footJiga" style="text-align:right;color:#c0392b;font-weight:700;">' + totalJigaWin.toLocaleString('ko-KR') + ' 원</td>' +
+      '<td colspan="3"></td>' +
     '</tr></tfoot>' +
     '</table></div>' +
     '<div class="foot">토지정보 조회 시스템 &nbsp;·&nbsp; ' + new Date().toLocaleDateString('ko-KR') + '</div>' +
     '<script>' +
     'var _data=' + dataJson + ';' +
     'function updateSummary(){' +
-    '  var tot=0;' +
-    '  _data.forEach(function(d){var a=parseFloat(d.area||0);if(!isNaN(a))tot+=a;});' +
+    '  var tot=0,jigaTot=0;' +
+    '  _data.forEach(function(d){' +
+    '    var a=parseFloat(d.area||0);if(!isNaN(a))tot+=a;' +
+    '    var j=parseFloat(String(d.jiga||"").replace(/,/g,""));' +
+    '    if(!isNaN(a)&&a>0&&!isNaN(j)&&j>0)jigaTot+=Math.round(a*j);' +
+    '  });' +
     '  document.getElementById("sumCnt").textContent=_data.length+" 필지";' +
     '  document.getElementById("sumArea").textContent=Math.round(tot).toLocaleString()+" ㎡";' +
     '  document.getElementById("sumPyeong").textContent="≈ "+Math.round(tot*0.3025).toLocaleString()+" 평";' +
     '  document.getElementById("footArea").textContent=Math.round(tot).toLocaleString();' +
+    '  var sj=document.getElementById("sumJiga");if(sj)sj.textContent=jigaTot.toLocaleString()+" 원";' +
+    '  var fj=document.getElementById("footJiga");if(fj)fj.textContent=jigaTot.toLocaleString()+" 원";' +
     '}' +
     'function deleteRow(pnu,btn){' +
     '  if(window.opener&&!window.opener.closed){window.opener.deleteLandFromChild(pnu);}' +
@@ -1706,14 +1755,17 @@ function openTableWindow() {
     '}' +
     'function exportCSV(){' +
     '  var fmt=function(v){return(v&&!isNaN(v))?Number(v).toLocaleString():(v||"");};' +
-    '  var csv="\\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),용도지역,지구단위계획구역\\n";' +
-    '  var tot=0;' +
+    '  var csv="\\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),공시지가 총액(원),용도지역,지구단위계획구역\\n";' +
+    '  var tot=0,jigaTot=0;' +
     '  _data.forEach(function(d,i){' +
     '    var a=parseFloat(d.area||0);if(!isNaN(a))tot+=a;' +
-    '    csv+=[i+1,\'="\'+d.pnu+\'"\',d.sido,d.sgg,d.emd,d.ri,d.jibun,d.jimok,fmt(d.area),fmt(d.jiga),d.uname,d.dgm_nm' +
+    '    var j=parseFloat(String(d.jiga||"").replace(/,/g,""));' +
+    '    var jt=(!isNaN(a)&&a>0&&!isNaN(j)&&j>0)?Math.round(a*j):0;' +
+    '    if(jt>0)jigaTot+=jt;' +
+    '    csv+=[i+1,\'="\'+d.pnu+\'"\',d.sido,d.sgg,d.emd,d.ri,d.jibun,d.jimok,fmt(d.area),fmt(d.jiga),jt>0?jt.toLocaleString():"",d.uname,d.dgm_nm' +
     '    ].map(function(f){return\'"\'+String(f).replace(/"/g,\'""\')+\'"\';}).join(",")+\"\\n\";' +
     '  });' +
-    '  csv+=\'"\'+_data.length+\'필지 합계","","","","","","","","\'+Math.round(tot).toLocaleString()+\'","","",""\'+\"\\n\";' +
+    '  csv+=\'"\'+_data.length+\'필지 합계","","","","","","","","\'+Math.round(tot).toLocaleString()+\'","","\'+jigaTot.toLocaleString()+\'","",""\'+\"\\n\";' +
     '  var b=new Blob([csv],{type:"text/csv;charset=utf-8"});' +
     '  var u=URL.createObjectURL(b);' +
     '  var a=document.createElement("a");a.href=u;a.download="토지조서_'+new Date().toISOString().slice(0,10)+'.csv";' +

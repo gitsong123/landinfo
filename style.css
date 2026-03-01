@@ -1,1 +1,124 @@
-/* Add styles here */
+/* ── 레이아웃 및 기본 스타일 ── */
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;font-size:13px;}
+.wrap{display:flex;height:100vh;width:100vw;}
+
+/* ── 지도 영역 ── */
+.map-area{flex:1;position:relative;height:100%;}
+#vmap,#ol3map{width:100%;height:100%;position:absolute;top:0;left:0;}
+.map-ctrl{position:absolute;top:10px;left:10px;z-index:999;background:rgba(255,255,255,.92);border-radius:8px;padding:6px 10px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.map-ctrl select{border:none;background:transparent;font-weight:600;font-size:13px;cursor:pointer;outline:none;}
+
+/* ── 사이드 패널 ── */
+.side{width:360px;min-width:300px;display:flex;flex-direction:column;height:100%;border-left:2px solid #dde1f0;background:#f4f6fb;overflow:hidden;}
+
+/* 헤더 & 검색 */
+.hd{background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;padding:16px 18px;flex-shrink:0;}
+.hd h1{margin:0;font-size:17px;font-weight:700;}
+.hd p{margin:4px 0 0;font-size:11px;opacity:.85;}
+.search-row{display:flex;gap:6px;padding:12px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;position:relative;}
+.search-row input{flex:1;padding:8px 10px;border:1px solid #c5cde0;border-radius:6px;font-size:13px;outline:none;}
+.search-row button{padding:8px 14px;background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;}
+
+/* ── 광고 컨테이너 ── */
+.ad-container{
+    background:#fff;
+    padding:4px 12px;
+    border-bottom:1px solid #e0e4f0;
+    min-height:60px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+}
+.sidebar-top-ad{
+    /* 검색창 아래 광고 영역 */
+}
+
+/* 버튼 및 옵션 */
+.btn-row{display:flex;gap:8px;padding:10px 12px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;}
+.btn-row button{flex:1;padding:8px 4px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:#fff;}
+.btn-export{background:linear-gradient(135deg,#11998e,#38ef7d);}
+.btn-clear{background:linear-gradient(135deg,#f7971e,#ffd200);color:#333!important;}
+
+/* (중략: 기존 스타일 유지) */
+.opt-table{width:100%;padding:10px 12px;background:#fff;border-bottom:1px solid #e0e4f0;}
+.theme-panel{padding:10px 12px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;}
+.theme-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.theme-hd-title{font-weight:700;color:#333;}
+.toggle-btn{padding:2px 8px;font-size:11px;background:#eee;border:1px solid #ccc;border-radius:4px;cursor:pointer;}
+.theme-item{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px dotted #eee;}
+.theme-item:last-child{border-bottom:none;}
+.drag-handle{cursor:move;color:#ccc;font-size:14px;}
+
+.land-list{flex:1;overflow-y:auto;padding:12px;background:#fff;}
+.footer{padding:8px 12px;font-size:10px;color:#aaa;border-top:1px solid #e0e4f0;}
+
+/* ── 상태 및 요약 바 ── */
+.status-bar{padding:6px 12px;font-size:11px;display:none;font-weight:600;}
+.status-bar.ok{background:#e8f5e9;color:#2e7d32;}
+.status-bar.err{background:#ffebee;color:#c62828;}
+.cnt-bar{padding:10px 12px;background:#fff;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;}
+.cnt-bar .ttl{font-weight:700;color:#555;}
+.cnt-badge{background:#3a7bd5;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;}
+.area-sum-bar{padding:8px 12px;background:#fff;border-bottom:1px solid #e0e4f0;display:flex;flex-direction:column;gap:2px;}
+.area-sum-label{font-size:11px;color:#888;}
+.area-sum-val{font-size:14px;font-weight:800;color:#3a7bd5;}
+
+/* ── 토지 카드 (데스크탑) ── */
+.land-item{background:#fff;border:1px solid #dee2e6;border-radius:8px;margin-bottom:12px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.05);}
+.land-item-hd{padding:8px 12px;background:#f8f9fa;border-bottom:1px solid #dee2e6;display:flex;justify-content:space-between;align-items:center;}
+.land-item-hd span{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+.land-item-hd button{padding:2px 6px;font-size:11px;border-radius:4px;cursor:pointer;border:1px solid #ccc;}
+.newwin-btn{background:#fff;}
+.del-btn{background:#ff5252;color:#fff;border:none!important;}
+.land-kv{padding:8px 12px;}
+.land-kv-sec{font-size:11px;font-weight:700;color:#3a7bd5;margin:8px 0 4px;border-bottom:1px solid #eef2ff;padding-bottom:2px;}
+.land-kv-sec:first-child{margin-top:0;}
+.land-kv-row{display:flex;justify-content:space-between;padding:3px 0;font-size:12px;}
+.land-kv-k{color:#777;}
+.land-kv-v{font-weight:600;color:#333;}
+.ecvam-badge{display:inline-block;padding:1px 6px;border-radius:4px;color:#fff;font-size:10px;font-weight:700;}
+.ecvam-gr1{background:#2e7d32;} .ecvam-gr2{background:#4caf50;} .ecvam-gr3{background:#ff9800;} .ecvam-gr5{background:#d32f2f;}
+
+/* ── 모바일 테이블 ── */
+.mob-land-tbl-wrap{display:none;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #eee;border-radius:6px;margin-bottom:10px;position:relative;}
+.mob-land-tbl-wrap.active{display:block;}
+.mob-land-tbl{width:100%;border-collapse:collapse;font-size:12px;background:#fff;min-width:480px;}
+.mob-land-tbl th{background:#f0f3fb;padding:8px 4px;border-bottom:1px solid #dde1f0;color:#555;font-weight:700;}
+.mob-land-tbl td{padding:10px 4px;text-align:center;border-bottom:1px solid #f0f0f0;}
+.mob-del-btn{background:#ff5252;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:11px;}
+.empty-state{text-align:center;padding:40px 20px;color:#aaa;}
+.empty-state .ico{font-size:40px;margin-bottom:10px;opacity:0.3;}
+
+/* 모바일 전용 UI */
+.sheet-pull{display:none;}
+
+/* 모바일 대응 */
+@media(max-width:768px){
+.side{width:100%;height:55vh;position:fixed;bottom:0;z-index:1000;box-shadow:0 -4px 16px rgba(0,0,0,0.15);transition:transform 0.3s ease;border-radius:16px 16px 0 0;border-left:none;}
+.side.sheet-collapsed{transform:translateY(calc(55vh - 48px));}
+
+.hd,.opt-table,.footer,.land-item{display:none!important;}
+.ad-container{padding:2px 8px; min-height:50px;}
+
+.sheet-pull{display:flex;align-items:center;padding:0 16px;height:48px;background:#fff;border-bottom:1px solid #eee;cursor:pointer;flex-shrink:0;}
+.sheet-pull-bar{width:40px;height:4px;background:#ddd;border-radius:2px;position:absolute;top:8px;left:50%;transform:translateX(-50%);}
+.sheet-pull-label{flex:1;font-weight:700;color:#333;font-size:13px;padding-top:4px;}
+.sheet-pull-toggle{font-size:14px;color:#888;padding-top:4px;}
+
+/* 모바일 순서 재배치 */
+.sheet-pull{order:1;}
+.cnt-bar{order:2;}
+.area-sum-bar{order:3;}
+.land-list{order:4; flex:1; padding:8px; overflow-y:auto;} /* 테이블 */
+.btn-row{order:5;} /* 토지조서 내보내기 버튼 */
+.status-bar{order:6;}
+.search-row{order:7;}
+.ad-container{order:8;}
+.theme-panel{order:10; background:#f9f9f9;} /* 주제도는 맨 아래 */
+#ecvamPanel{order:11;}
+
+/* 주제도 확장 시 여백 */
+#themeList, #ecvamThemeList { max-height: 150px; overflow-y: auto; }
+}

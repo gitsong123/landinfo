@@ -1,1 +1,1272 @@
-// Add JS here
+
+/* ===================================================
+   전역 변수
+=================================================== */
+var apiKey = "A12CEDAE-86F1-3453-BC92-3FD98BE14103";
+var ecvamApiKey = "MUTW-PGHX-76CT-ENMD";
+var ECVAM_WMS = "https://ecvam.neins.go.kr/apicall.do";
+var map2d, map3d, markerLayer;
+var currentMapType = "2d";
+var isLandParcelActive = false;
+var landLayer2d = null, landLayer3d = null;
+var map3dClickAdded = false;
+var collectedLandInfo = [];
+var markers = [];
+var themeLayers = {};
+var ecvamThemeLayers = {};
+var cache = {};
+var highlightLayer = null;
+var highlight3dEntities = {};
+var selectedFeatures = {};
+
+/* (산지구분 코드 제거됨) */
+
+var themeData = [
+  { name:"연속지적도",        layer:"LP_PA_CBND_BUBUN",    lf:"jibun" },
+  { name:"도시지역(용도지역)", layer:"LT_C_UQ111",          lf:"uname" },
+  { name:"관리지역(용도지역)", layer:"LT_C_UQ112",          lf:"uname" },
+  { name:"농림지역(용도지역)", layer:"LT_C_UQ113",          lf:"uname" },
+  { name:"자연환경보전지역",   layer:"LT_C_UQ114",          lf:"uname" },
+  { name:"개발제한구역",       layer:"LT_C_UD801",          lf:"" },
+  { name:"지구단위계획구역",   layer:"LT_C_UPISUQ161",      lf:"dgm_nm" },
+  { name:"도시계획 도로",      layer:"LT_C_UPISUQ151",      lf:"" },
+  { name:"도시계획 공간시설",  layer:"LT_C_UPISUQ153",      lf:"" },
+  { name:"도시계획 유통공급",  layer:"LT_C_UPISUQ154",      lf:"" },
+  { name:"공공문화체육시설",   layer:"LT_C_UPISUQ155",      lf:"" },
+  { name:"도시계획 방재시설",  layer:"LT_C_UPISUQ156",      lf:"" },
+  { name:"도시계획 보건위생",  layer:"LT_C_UPISUQ157",      lf:"" },
+  { name:"도시계획 환경위생",  layer:"LT_C_UPISUQ158",      lf:"" },
+  { name:"도시계획 기타기반",  layer:"LT_C_UPISUQ159",      lf:"" },
+  { name:"상수원보호구역",     layer:"LT_C_UM710",          lf:"uname" },
+  { name:"건축물 정보",        layer:"LT_C_BLDGINFO",       lf:"" },
+  { name:"초등학교통학구역",   layer:"LT_C_DESCH",          lf:"hakgudo_nm" },
+  { name:"산림입지도(산지)",   layer:"LT_C_FSDIFRSTS",      lf:"name" }  /* 참고용 주제도만 유지 */
+];
+
+/* ECVAM 환경성평가 레이어 목록 (ecvam.neins.go.kr) */
+var ecvamThemeData = [
+  { id:"nem_ecvam",    name:"국토환경성평가지도 (종합등급)" },
+  { id:"nem_eco",      name:"환경·생태적 평가결과" },
+  { id:"nem_eco_01",   name:"생태자연도(다양성)" },
+  { id:"nem_eco_02",   name:"자연성 평가" },
+  { id:"nem_eco_04",   name:"희귀성 평가" },
+  { id:"nem_law",      name:"법제적 평가결과 (종합)" },
+  { id:"nem_law_01",   name:"생태·경관보전지역" },
+  { id:"nem_law_28",   name:"자연환경보전지역" },
+  { id:"nem_law_22",   name:"상수원보호구역" },
+  { id:"nem_law_35",   name:"개발제한구역" }
+];
+
+/* ===================================================
+   초기화
+=================================================== */
+$(document).ready(function() {
+  init2dMap();
+  init3dMap();
+  setupEvents();
+  initThemeList();
+  initEcvamThemeList();
+
+  $("#vmap").hide();
+  $("#ol3map").show();
+
+  // 기본 위치: 경기도 광주시 태전동 744번지
+  activateLandParcel();
+
+  function activateLandParcel() {
+    $("#landChk").prop("checked", true);
+    toggleLandParcel(true);
+    try { map2d.updateSize(); } catch(e){}
+  }
+
+  $(window).on('resize', function(){
+    if (currentMapType === "2d") try{ map2d.updateSize(); }catch(e){}
+  });
+
+});
+
+/* ===================================================
+   2D 지도 초기화
+=================================================== */
+function init2dMap() {
+  vw.ol3.MapOptions = {
+    basemapType: vw.ol3.BasemapType.GRAPHIC,
+    controlDensity: vw.ol3.DensityType.EMPTY,
+    interactionDensity: vw.ol3.DensityType.BASIC,
+    controlsAutoArrange: true,
+    homePosition: vw.ol3.CameraPosition,
+    initPosition: vw.ol3.CameraPosition
+  };
+  map2d = new vw.ol3.Map("ol3map", vw.ol3.MapOptions);
+  map2d.getView().setCenter(ol.proj.fromLonLat([127.23601, 37.38138]));
+  map2d.getView().setZoom(18);
+
+  highlightLayer = new ol.layer.Vector({
+    source: new ol.source.Vector(),
+    style: new ol.style.Style({
+      stroke: new ol.style.Stroke({ color:'#ff2222', width:3 }),
+      fill: new ol.style.Fill({ color:'rgba(255,30,30,0.12)' })
+    }),
+    zIndex: 500
+  });
+  map2d.addLayer(highlightLayer);
+  markerLayer = new vw.ol3.layer.Marker(map2d, { showTitle:true });
+  map2d.addLayer(markerLayer);
+  map2d.on('singleclick', debounce(handleMap2dClick, 250));
+}
+
+/* ===================================================
+   3D 지도 초기화
+=================================================== */
+function init3dMap() {
+  var opts = {
+    mapId: "vmap",
+    initPosition: new vw.CameraPosition(
+      new vw.CoordZ(127.23601, 37.38138, 500),
+      new vw.Direction(0, -90, 0)
+    ),
+    logo: false, navigation: false
+  };
+  map3d = new vw.Map();
+  map3d.setOption(opts);
+  map3d.setMapId("vmap");
+  map3d.setInitPosition(opts.initPosition);
+  map3d.setLogoVisible(false);
+  map3d.setNavigationZoomVisible(true);
+  map3d.start();
+}
+
+/* ===================================================
+   지도 타입 전환 (위치 동기화 포함)
+=================================================== */
+function changeMapType() {
+  currentMapType = $("#mapTypeSel").val();
+
+  if (currentMapType === "3d") {
+    // 2D → 3D: 현재 2D 위치를 3D에 동기화
+    var lon2d, lat2d, zoom2d;
+    try {
+      var c = ol.proj.toLonLat(map2d.getView().getCenter());
+      lon2d = c[0]; lat2d = c[1];
+      zoom2d = map2d.getView().getZoom() || 18;
+    } catch(e){}
+
+    $("#ol3map").hide(); $("#vmap").show();
+    $("#currentMapType").text("3D 지도");
+    $("#bldRow").show();
+    if (isLandParcelActive) { isLandParcelActive = false; toggle3dLayer(true); }
+
+    // 3D 위치 이동 (줌레벨 → 고도 변환)
+    if (lon2d && lat2d) {
+      var alt = Math.max(200, Math.pow(2, 20 - zoom2d) * 250);
+      setTimeout(function(){
+        try {
+          map3d.moveTo(new vw.CameraPosition(
+            new vw.CoordZ(lon2d, lat2d, alt),
+            new vw.Direction(0, -90, 0)
+          ));
+        } catch(e){}
+      }, 300);
+    }
+    try{ map3d.refresh(); }catch(e){}
+
+  } else {
+    // 3D → 2D: 현재 3D 위치를 2D에 동기화
+    var lon3d, lat3d, z3d;
+    try {
+      var pos = map3d.getCurrentPosition().position;
+      lon3d = pos.lon || pos.x || pos[0];
+      lat3d = pos.lat || pos.y || pos[1];
+      z3d = pos.z || pos.alt || pos[2];
+    } catch(e){}
+
+    $("#vmap").hide(); $("#ol3map").show();
+    $("#currentMapType").text("2D 일반지도");
+    $("#bldRow").hide();
+    if (isLandParcelActive) { isLandParcelActive = false; toggle2dLayer(true); }
+
+    if (lon3d && lat3d) {
+      var zoom2dNew = z3d ? Math.max(14, Math.min(20, Math.round(20 - Math.log2(z3d / 150)))) : 18;
+      try {
+        map2d.getView().setCenter(ol.proj.fromLonLat([lon3d, lat3d]));
+        map2d.getView().setZoom(zoom2dNew);
+      } catch(e){}
+    }
+    try{ map2d.updateSize(); }catch(e){}
+  }
+}
+
+/* ===================================================
+   건물 레이어 토글 (3D 전용)
+=================================================== */
+function checkLayer(c, name) {
+  if (currentMapType !== "3d") return;
+  try {
+    if ($(c).is(":checked")) map3d.getLayerElement(name).show();
+    else map3d.getLayerElement(name).hide();
+  } catch(e){}
+}
+
+/* ===================================================
+   지적도 토글
+=================================================== */
+function toggleLandParcel(enable) {
+  if (currentMapType === "3d") toggle3dLayer(enable);
+  else toggle2dLayer(enable);
+}
+
+function toggle2dLayer(enable) {
+  if (enable && !isLandParcelActive) {
+    try {
+      landLayer2d = map2d.addNamedLayer('LP_PA_CBND_BUBUN', 'LP_PA_CBND_BUBUN');
+      map2d.addLayer(landLayer2d);
+      isLandParcelActive = true;
+      showMsg("2D 지적도가 활성화되었습니다.", "ok");
+    } catch(e){ showMsg("지적도 활성화 오류: " + e.message, "err"); }
+  } else if (!enable && isLandParcelActive) {
+    try {
+      if (landLayer2d) { landLayer2d.setVisible(false); map2d.removeLayer(landLayer2d); landLayer2d = null; }
+      isLandParcelActive = false;
+      showMsg("지적도가 비활성화되었습니다.");
+    } catch(e){}
+  }
+}
+
+function toggle3dLayer(enable) {
+  if (enable && !isLandParcelActive) {
+    try {
+      // VWorld 3D 공식 API 패턴 (V-world GitHub 샘플 기반)
+      // setStyles/setFormat 불필요 — setUrl/setLayers/setParams 만 사용
+      var wmsSource = new vw.source.TileWMS();
+      wmsSource.setUrl("https://api.vworld.kr/req/wms?Key=" + apiKey + "&");
+      wmsSource.setLayers("lt_c_landinfobasemap");
+      wmsSource.setParams("tilesize=256");
+
+      var wmsTile = new vw.layer.Tile(wmsSource);
+      landLayer3d = new vw.Layers();
+      landLayer3d.add(wmsTile);
+
+      if (!map3dClickAdded) {
+        map3d.onClick.addEventListener(handleMap3dClick);
+        map3dClickAdded = true;
+      }
+      isLandParcelActive = true;
+      showMsg("3D 지적도가 활성화되었습니다.", "ok");
+    } catch(e){ showMsg("3D 지적도 오류: " + e.message, "err"); }
+  } else if (!enable && isLandParcelActive) {
+    try {
+      if (landLayer3d) { landLayer3d.removeAll(); landLayer3d = null; }
+      try { map3d.onClick.removeEventListener(handleMap3dClick); } catch(e2){}
+      map3dClickAdded = false;
+      isLandParcelActive = false;
+      showMsg("지적도가 비활성화되었습니다.");
+    } catch(e){}
+  }
+}
+
+/* ===================================================
+   주제도
+=================================================== */
+function initThemeList() {
+  var $list = $("#themeList");
+  themeData.forEach(function(t) {
+    var $item = $('<div class="theme-item" data-layer="' + t.layer + '">' +
+      '<span class="drag-handle">☰</span>' +
+      '<input type="checkbox" id="tc_' + t.layer + '" data-layer="' + t.layer + '">' +
+      '<label for="tc_' + t.layer + '">' + t.name + '</label>' +
+      '</div>');
+    $list.append($item);
+    $item.find('input').on('change', function(){ toggleThemeLayer(t.layer, this.checked, t); });
+  });
+  try {
+    $list.sortable({ handle:'.drag-handle', update: updateLayerOrder });
+    $list.disableSelection();
+  } catch(e){}
+}
+
+function toggleThemePanel() {
+  var $list = $("#themeList");
+  var $btn = $(".toggle-btn");
+  if ($list.is(":visible")) { $list.slideUp(); $btn.text("펼치기"); }
+  else { $list.slideDown(); $btn.text("접기"); }
+}
+
+function toggleThemeLayer(layerName, enable, theme) {
+  if (currentMapType !== "2d") {
+    showMsg("주제도는 2D 지도에서만 지원합니다.", "err");
+    $("#tc_" + layerName).prop("checked", false);
+    return;
+  }
+  if (enable) {
+    if (!themeLayers[layerName]) {
+      try {
+        themeLayers[layerName] = map2d.addNamedLayer(layerName, layerName);
+        map2d.addLayer(themeLayers[layerName]);
+      } catch(e){ showMsg("레이어 추가 오류: " + e.message, "err"); return; }
+    }
+    themeLayers[layerName].setVisible(true);
+    showMsg(theme.name + " 주제도 활성화됨.", "ok");
+    updateLayerOrder();
+  } else {
+    if (themeLayers[layerName]) {
+      themeLayers[layerName].setVisible(false);
+      showMsg(theme.name + " 주제도 비활성화됨.");
+    }
+  }
+}
+
+function updateLayerOrder() {
+  if (currentMapType !== "2d") return;
+  $("#themeList .theme-item").each(function(i) {
+    var ln = $(this).data("layer");
+    if (themeLayers[ln]) try{ themeLayers[ln].setZIndex(100 - i); }catch(e){}
+  });
+}
+
+/* ===================================================
+   ECVAM 환경성평가 주제도
+=================================================== */
+function initEcvamThemeList() {
+  var $list = $("#ecvamThemeList");
+  ecvamThemeData.forEach(function(t) {
+    var $item = $('<div class="theme-item" data-ecvam="' + t.id + '">' +
+      '<span class="drag-handle">☰</span>' +
+      '<input type="checkbox" id="etc_' + t.id + '" data-ecvam="' + t.id + '">' +
+      '<label for="etc_' + t.id + '">' + t.name + '</label>' +
+      '</div>');
+    $list.append($item);
+    $item.find('input').on('change', function(){ toggleEcvamLayer(t.id, t.name, this.checked); });
+  });
+}
+
+function toggleEcvamPanel() {
+  var $list = $("#ecvamThemeList");
+  var $btn = $("#ecvamToggleBtn");
+  if ($list.is(":visible")) { $list.slideUp(); $btn.text("펼치기"); }
+  else { $list.slideDown(); $btn.text("접기"); }
+}
+
+function toggleEcvamLayer(layerId, layerName, enable) {
+  if (currentMapType !== "2d") {
+    showMsg("환경성평가 주제도는 2D 지도에서만 지원합니다.", "err");
+    $("#etc_" + layerId).prop("checked", false);
+    return;
+  }
+  if (typeof ecvamLayerCreate === 'undefined') {
+    showMsg("ECVAM API 로드 실패. 인터넷 연결 후 새로고침하세요.", "err");
+    $("#etc_" + layerId).prop("checked", false);
+    return;
+  }
+  if (enable) {
+    if (!ecvamThemeLayers[layerId]) {
+      try {
+        var layer = ecvamLayerCreate(layerId, true);
+        layer.setZIndex(200);
+        map2d.addLayer(layer);
+        ecvamThemeLayers[layerId] = layer;
+      } catch(e) { showMsg("레이어 추가 오류: " + e.message, "err"); return; }
+    } else {
+      ecvamThemeLayers[layerId].setVisible(true);
+    }
+    showMsg("🌿 " + layerName + " 레이어 활성화됨.", "ok");
+  } else {
+    if (ecvamThemeLayers[layerId]) {
+      ecvamThemeLayers[layerId].setVisible(false);
+      showMsg(layerName + " 레이어 비활성화됨.");
+    }
+  }
+}
+
+/* ECVAM WMS GetFeatureInfo 등급 조회
+ * - CORS 허용 환경에서는 실제 등급 반환
+ * - 로컬/CORS 차단 환경에서는 '-' 반환 (비주얼 레이어로 확인) */
+function fetchEcvamGrade(lon, lat, callback) {
+  var delta = 0.0002;
+  var bbox = (lon - delta) + ',' + (lat - delta) + ',' + (lon + delta) + ',' + (lat + delta);
+  var baseParams = '&SERVICE=WMS&VERSION=1.1.0&REQUEST=GetFeatureInfo' +
+    '&STYLES=&SRS=EPSG:4326&BBOX=' + bbox +
+    '&WIDTH=10&HEIGHT=10&X=5&Y=5&FEATURE_COUNT=1';
+
+  var result = { ecvam_gr: '-', bio_gr: '-' };
+  var done = 0;
+
+  function checkDone() { if (++done >= 2) callback(result); }
+
+  function tryGfi(layerId, field, onDone) {
+    $.ajax({
+      url: ECVAM_WMS + '?LAYERS=' + layerId + '&QUERY_LAYERS=' + layerId +
+           '&INFO_FORMAT=application/json' + baseParams,
+      timeout: 4000,
+      success: function(data) {
+        try {
+          var feats = (data && data.features) || [];
+          if (feats.length > 0) {
+            var p = feats[0].properties || {};
+            /* 가능한 속성명 순서대로 시도 */
+            var v = p.grade || p.GRADE || p.pvalue || p.value || p.ecvam_gr ||
+                    p.score || p.SCORE || p.bio_gr || null;
+            if (v !== null && v !== undefined) onDone(String(v));
+            else onDone('-');
+          } else { onDone('-'); }
+        } catch(e) { onDone('-'); }
+      },
+      error: function() { onDone('-'); }
+    });
+  }
+
+  /* 국토환경성평가등급 */
+  tryGfi('nem_ecvam', 'grade', function(v) {
+    result.ecvam_gr = v;
+    checkDone();
+  });
+
+  /* 생태자연도 (nem_eco_01: 다양성 — 생태자연도 기반 항목) */
+  tryGfi('nem_eco_01', 'grade', function(v) {
+    result.bio_gr = v;
+    checkDone();
+  });
+}
+
+/* ECVAM 등급 배지 HTML */
+function ecvamGrBadge(gr) {
+  if (!gr || gr === '-' || gr === 'null') {
+    return '<span style="color:#aaa;font-size:11px;">-</span>';
+  }
+  var cls = 'ecvam-gr' + gr;
+  return '<span class="ecvam-badge ' + cls + '">' + gr + '등급</span>';
+}
+
+/* 기존 카드의 ECVAM 등급 업데이트 (비동기 조회 후) */
+function updateEcvamGradeOnCard(pnu, ecvamResult) {
+  var $card = $('.land-item[data-pnu="' + pnu + '"]');
+  if (!$card.length) return;
+  $card.find('.ecvam-val-ecvam').html(ecvamGrBadge(ecvamResult.ecvam_gr));
+  $card.find('.ecvam-val-bio').html(ecvamGrBadge(ecvamResult.bio_gr));
+  /* collectedLandInfo 업데이트 */
+  var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+  if (d) { d.ecvam_gr = ecvamResult.ecvam_gr; d.bio_gr = ecvamResult.bio_gr; }
+}
+
+/* ===================================================
+   클릭 핸들러
+=================================================== */
+   function handleMap2dClick(evt) {
+    if (!isLandParcelActive) return;
+  
+    var coordinate = evt.coordinate;
+    var lonLat = ol.proj.transform(coordinate, 'EPSG:3857', 'EPSG:4326');
+    var lon = lonLat[0];
+    var lat = lonLat[1];
+  
+    // WMS GetFeatureInfo 요청
+    var view = map2d.getView();
+    var viewResolution = view.getResolution();
+    var source = landLayer2d.getSource();
+  
+    var url = source.getFeatureInfoUrl(
+      coordinate,
+      viewResolution,
+      view.getProjection(),
+      {
+        'INFO_FORMAT': 'application/json', // GML 대신 JSON 형식 요청
+        'FEATURE_COUNT': 10
+      }
+    );
+  
+    if (url) {
+        showMsg("🔍 토지 정보 조회 중...");
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    processLandData(data, lon, lat);
+                } else {
+                    showMsg("선택 위치에 토지 정보가 없습니다.", "err");
+                }
+            })
+            .catch(error => {
+                console.error('GetFeatureInfo Error:', error);
+                showMsg("조회 중 오류가 발생했습니다.", "err");
+            });
+    }
+  }
+
+function handleMap3dClick(wp, ep, carto) {
+  if (!isLandParcelActive) return;
+  if (carto && carto.longitudeDD && carto.latitudeDD) {
+    fetchLandInfo(carto.longitudeDD, carto.latitudeDD);
+  }
+}
+
+/* ===================================================
+   토지 정보 조회 (WFS 단일 요청)
+=================================================== */
+function fetchLandInfo(lon, lat) {
+  if (!isLandParcelActive) return;
+
+  var buf = getBuf(lon, lat);
+  var bbox = (lon-buf[0])+","+(lat-buf[1])+","+(lon+buf[0])+","+(lat+buf[1]);
+  var ck = "land_" + lon.toFixed(7) + "_" + lat.toFixed(7);
+
+  if (cache[ck]) { processLandData(cache[ck], lon, lat); showMsg("캐시에서 불러왔습니다."); return; }
+
+  showMsg("🔍 토지 정보 조회 중...");
+
+  $.ajax({
+    type: "get",
+    url: "https://api.vworld.kr/req/wfs",
+    data: {
+      key: apiKey,
+      domain: window.location.hostname || "localhost",
+      SERVICE: "WFS", version: "1.1.0", request: "GetFeature",
+      TYPENAME: [
+        "lt_c_landinfobasemap",   // 기본 지적정보
+        "lt_c_uq111","lt_c_uq112","lt_c_uq113","lt_c_uq114", // 용도지역
+        "lt_c_upisuq161",         // 지구단위계획구역
+        "lp_pa_cbnd_bubun"        // 공시지가
+      ].join(","),
+      OUTPUT: "text/javascript",
+      SRSNAME: "EPSG:4326",
+      BBOX: bbox
+    },
+    dataType: "jsonp",
+    jsonpCallback: "parseResponse",
+    success: function(data) {
+      if (data && data.totalFeatures > 0) {
+        cache[ck] = data;
+        processLandData(data, lon, lat);
+      } else {
+        showMsg("선택 위치에 토지 정보가 없습니다.", "err");
+      }
+    },
+    error: function() { showMsg("조회 중 오류가 발생했습니다.", "err"); }
+  });
+}
+
+/* ===================================================
+   2D 필지 하이라이트
+=================================================== */
+function addHighlight2d(geometry, pnu) {
+  if (!highlightLayer) return;
+  try {
+    var type = geometry.type;
+    var olGeom;
+    if (type === 'Polygon') {
+      var rings = geometry.coordinates.map(function(ring) {
+        return ring.map(function(c){ return ol.proj.fromLonLat([c[0],c[1]]); });
+      });
+      olGeom = new ol.geom.Polygon(rings);
+    } else if (type === 'MultiPolygon') {
+      var polys = geometry.coordinates.map(function(poly) {
+        return poly.map(function(ring){ return ring.map(function(c){ return ol.proj.fromLonLat([c[0],c[1]]); }); });
+      });
+      olGeom = new ol.geom.MultiPolygon(polys);
+    }
+    if (olGeom) {
+      var feature = new ol.Feature({ geometry: olGeom, pnu: pnu });
+      highlightLayer.getSource().addFeature(feature);
+      selectedFeatures[pnu] = feature;
+    }
+  } catch(e){ console.warn('하이라이트 추가 오류:', e); }
+}
+
+function removeHighlight2d(pnu) {
+  var feature = selectedFeatures[pnu];
+  if (feature && highlightLayer) {
+    try{ highlightLayer.getSource().removeFeature(feature); }catch(e){}
+    delete selectedFeatures[pnu];
+  }
+}
+
+/* ===================================================
+   3D 필지 하이라이트
+=================================================== */
+function findCesiumViewer() {
+  if (!window.Cesium) return null;
+  // 다양한 경로로 Cesium Viewer 탐색
+  var tries = [
+    map3d._viewer, map3d.viewer,
+    map3d.getCesiumViewer && map3d.getCesiumViewer()
+  ];
+  for (var ti = 0; ti < tries.length; ti++) {
+    if (tries[ti] && tries[ti].entities) return tries[ti];
+  }
+  // DOM 요소 내부 탐색
+  var vmapEl = document.getElementById('vmap');
+  if (vmapEl) {
+    for (var k in vmapEl) {
+      try {
+        var v = vmapEl[k];
+        if (v && typeof v === 'object' && v.entities && typeof v.entities.add === 'function') return v;
+      } catch(e2) {}
+    }
+  }
+  return null;
+}
+
+function addHighlight3d(geometry, pnu) {
+  function doHighlight(retriesLeft) {
+    try {
+      var viewer = findCesiumViewer();
+      if (!viewer) {
+        if (retriesLeft > 0) setTimeout(function(){ doHighlight(retriesLeft - 1); }, 600);
+        return;
+      }
+      var coords = geometry.type === 'MultiPolygon'
+        ? geometry.coordinates[0][0]
+        : geometry.coordinates[0];
+      var positions = coords.map(function(c) {
+        return Cesium.Cartesian3.fromDegrees(c[0], c[1]);
+      });
+      var polyEnt = viewer.entities.add({
+        polygon: {
+          hierarchy: new Cesium.PolygonHierarchy(positions),
+          material: Cesium.Color.RED.withAlpha(0.3),
+          classificationType: typeof Cesium.ClassificationType !== 'undefined'
+            ? Cesium.ClassificationType.BOTH : undefined
+        }
+      });
+      var linePositions = positions.concat([positions[0]]);
+      var lineEnt = viewer.entities.add({
+        polyline: {
+          positions: linePositions,
+          width: 3,
+          material: new Cesium.PolylineOutlineMaterialProperty({
+            color: Cesium.Color.RED,
+            outlineColor: Cesium.Color.WHITE,
+            outlineWidth: 1
+          }),
+          clampToGround: true
+        }
+      });
+      highlight3dEntities[pnu] = { poly: polyEnt, line: lineEnt };
+    } catch(e) {
+      console.warn('3D 하이라이트 오류:', e);
+      if (retriesLeft > 0) setTimeout(function(){ doHighlight(retriesLeft - 1); }, 600);
+    }
+  }
+  doHighlight(5);
+}
+
+function removeHighlight3d(pnu) {
+  var ents = highlight3dEntities[pnu];
+  if (ents) {
+    try {
+      var viewer = findCesiumViewer();
+      if (viewer && viewer.entities) {
+        if (ents.poly) viewer.entities.remove(ents.poly);
+        if (ents.line) viewer.entities.remove(ents.line);
+      }
+    } catch(e){}
+    delete highlight3dEntities[pnu];
+  }
+}
+
+function clearHighlight() {
+  if (highlightLayer) highlightLayer.getSource().clear();
+  selectedFeatures = {};
+  Object.keys(highlight3dEntities).forEach(function(pnu){ removeHighlight3d(pnu); });
+}
+
+/* ===================================================
+   Point-in-Polygon (레이 캐스팅)
+=================================================== */
+function pointInRing(px, py, ring) {
+  var inside = false;
+  for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    var xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if (((yi > py) !== (yj > py)) && (px < (xj-xi)*(py-yi)/(yj-yi)+xi))
+      inside = !inside;
+  }
+  return inside;
+}
+function pointInGeom(px, py, geom) {
+  if (!geom) return false;
+  if (geom.type === 'Polygon') return pointInRing(px, py, geom.coordinates[0]);
+  if (geom.type === 'MultiPolygon') return geom.coordinates.some(function(p){ return pointInRing(px, py, p[0]); });
+  return false;
+}
+function geomArea(geom) {
+  var ring = geom.type === 'MultiPolygon' ? geom.coordinates[0][0] : geom.coordinates[0];
+  var area = 0;
+  for (var i = 0, j = ring.length-1; i < ring.length; j = i++) {
+    area += (ring[j][0]+ring[i][0]) * (ring[j][1]-ring[i][1]);
+  }
+  return Math.abs(area)/2;
+}
+
+/* ===================================================
+   BBOX 버퍼
+=================================================== */
+function getBuf(lon, lat) {
+  var bx = 0.0003, by = 0.00025;
+  try {
+    if (currentMapType === "2d") {
+      var res = map2d.getView().getResolution();
+      bx = (res * 8) / 111000;
+      by = (res * 8) / 111000;
+    } else {
+      var z = map3d.getCurrentPosition().position.z;
+      bx = 1/(111000/z*1.48*50);
+      by = 1/(111000/z*1.85*50);
+    }
+  } catch(e){}
+  return [Math.max(bx, 0.00008), Math.max(by, 0.00008)];
+}
+
+/* ===================================================
+   응답 처리 (정밀 PIP + 규제 정확도 개선)
+=================================================== */
+function processLandData(data, lon, lat) {
+  var baseFeats = (data.features||[]).filter(function(f){
+    return f.id && f.id.toLowerCase().indexOf("lt_c_landinfobasemap") >= 0;
+  });
+  if (baseFeats.length === 0) { showMsg("해당 위치에 지적 정보가 없습니다.", "err"); return; }
+
+  // PIP: 클릭점이 내부에 포함된 필지 중 가장 작은 것
+  var inside = baseFeats.filter(function(f){ return pointInGeom(lon, lat, f.geometry); });
+  var best = null;
+  if (inside.length > 0) {
+    best = inside.reduce(function(a,b){ return geomArea(a.geometry) <= geomArea(b.geometry) ? a : b; });
+  } else {
+    var minD = Infinity;
+    baseFeats.forEach(function(f){
+      var ctr = getCenter(f.geometry);
+      var d2 = dist(lon, lat, ctr[0], ctr[1]);
+      if (d2 < minD){ minD = d2; best = f; }
+    });
+  }
+  if (!best) { showMsg("필지를 찾을 수 없습니다.", "err"); return; }
+
+  // ── 선택 필지 화면 중앙으로 이동 ──
+  var parcelCenter = getCenter(best.geometry);
+  if (currentMapType === "2d") {
+    try {
+      var mercCoord = ol.proj.fromLonLat([parcelCenter[0], parcelCenter[1]]);
+      if (window.innerWidth <= 768) {
+        // 모바일: 하단 패널(55vh)이 지도를 가리므로 가시영역 중앙에 필지 배치
+        // 뷰 중심을 필지보다 아래로 (panelH/2)만큼 내려 필지가 가시영역 중앙에 오도록 함
+        var panelPx = window.innerHeight * 0.55;
+        var res = map2d.getView().getResolution();
+        var yOffset = (panelPx / 2) * res; // EPSG:3857 단위, Y축 아래로 이동
+        map2d.getView().animate({ center: [mercCoord[0], mercCoord[1] - yOffset], duration: 400 });
+      } else {
+        map2d.getView().animate({ center: mercCoord, duration: 400 });
+      }
+    } catch(e){}
+  } else {
+    try {
+      var curPos = map3d.getCurrentPosition();
+      var curAlt = (curPos && curPos.position && curPos.position.z) ? curPos.position.z : 800;
+      map3d.moveTo(new vw.CameraPosition(new vw.CoordZ(parcelCenter[0], parcelCenter[1], Math.max(curAlt, 400)), new vw.Direction(0, -90, 0)));
+    } catch(e){}
+  }
+
+  var d = Object.assign({}, best.properties);
+
+  // 용도지역: PIP 우선, 없으면 첫 번째 매칭
+  var uqTypes = ["lt_c_uq111","lt_c_uq112","lt_c_uq113","lt_c_uq114"];
+  var uqFeature = null;
+  for (var i = 0; i < uqTypes.length && !uqFeature; i++) {
+    var uqCands = (data.features||[]).filter(function(f){
+      return f.id && f.id.toLowerCase().indexOf(uqTypes[i]) >= 0;
+    });
+    uqFeature = uqCands.find(function(f){ return f.geometry && pointInGeom(lon, lat, f.geometry); })
+                || (uqCands.length > 0 ? uqCands[0] : null);
+  }
+  d.uname = uqFeature ? (uqFeature.properties.uname || '-') : '-';
+
+  // 지구단위계획구역: PIP
+  var upCands = (data.features||[]).filter(function(f){ return f.id && f.id.toLowerCase().indexOf("lt_c_upisuq161") >= 0; });
+  var upF = upCands.find(function(f){ return f.geometry && pointInGeom(lon, lat, f.geometry); }) || null;
+  d.dgm_nm = upF ? (upF.properties.dgm_nm || '-') : '-';
+
+  // 공시지가: PIP 우선
+  var lpCands = (data.features||[]).filter(function(f){ return f.id && f.id.toLowerCase().indexOf("lp_pa_cbnd_bubun") >= 0; });
+  var lpF = lpCands.find(function(f){ return f.geometry && pointInGeom(lon, lat, f.geometry); }) || lpCands[0] || null;
+  d.jiga = lpF ? (lpF.properties.jiga || '-') : '-';
+
+  // ── 토글: 이미 선택 → 해제, 새 선택 → 추가 ──
+  var alreadySelected = collectedLandInfo.some(function(x){ return x.pnu === d.pnu; });
+  if (alreadySelected) {
+    if (currentMapType === "2d") removeHighlight2d(d.pnu);
+    else removeHighlight3d(d.pnu);
+    collectedLandInfo = collectedLandInfo.filter(function(x){ return x.pnu !== d.pnu; });
+    removeMarker(d.pnu);
+    $('.land-item[data-pnu="' + d.pnu + '"]').remove();
+    $('#mobLandTbody tr[data-pnu="' + d.pnu + '"]').remove();
+    $('#mobLandTbody tr').each(function(i){ $(this).find('td:first').text(i+1); });
+    if ($('#mobLandTbody tr').length === 0) $('#mobLandTableWrap').removeClass('active');
+    updateCnt();
+    if (collectedLandInfo.length === 0) showEmptyState();
+    showMsg("🔲 필지 선택이 해제되었습니다.", "");
+  } else {
+    if (currentMapType === "2d") addHighlight2d(best.geometry, d.pnu);
+    else addHighlight3d(best.geometry, d.pnu);
+    d.ecvam_gr = '-';
+    d.bio_gr   = '-';
+    addLandInfo(d);        // 카드 즉시 추가 (등급은 '-' 표시 후 업데이트)
+    addMarker(lon, lat, d);
+    autoOpenMobileSheet();
+    showMsg("✅ 토지 정보가 추가되었습니다.", "ok");
+    /* ECVAM 등급 비동기 조회 → 카드 업데이트 */
+    fetchEcvamGrade(lon, lat, function(ecvamResult) {
+      updateEcvamGradeOnCard(d.pnu, ecvamResult);
+    });
+  }
+}
+
+/* ===================================================
+   토지 카드 추가 (새창 버튼 + 섹션 접기/펼치기)
+=================================================== */
+function addLandInfo(d) {
+  $(".empty-state").remove();
+  collectedLandInfo.push(d);
+
+  var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
+  var fmt = function(v){ return (v && v !== '-' && !isNaN(v)) ? Number(v).toLocaleString() : (v || '-'); };
+  var safePnu = (d.pnu || '').replace(/'/g, '');
+
+  var $item = $('<div class="land-item" data-pnu="' + d.pnu + '"></div>');
+  $item.append(
+    '<div class="land-item-hd">' +
+      '<span title="' + addr + '">' + addr + '</span>' +
+      '<button class="newwin-btn" onclick="openInNewWindow('' + safePnu + '')">🔗 새창</button>' +
+      '<button class="del-btn" data-pnu="' + d.pnu + '">삭제</button>' +
+    '</div>'
+  );
+
+  var addrShort = [d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
+  var rawArea = d.area_ || d.parea;
+  var areaDisp = (rawArea && !isNaN(rawArea)) ? Math.round(Number(rawArea)).toLocaleString() : '-';
+
+  // ── 심플 key:value 카드 (데스크탑용) ──
+  function kv(k, v) {
+    return '<div class="land-kv-row"><span class="land-kv-k">' + k + '</span><span class="land-kv-v">' + (v || '-') + '</span></div>';
+  }
+  var $kv = $('<div class="land-kv"></div>');
+  $kv.append('<div class="land-kv-sec">📐 기본정보</div>');
+  $kv.append(kv('지목', d.jimok));
+  $kv.append(kv('면적', areaDisp + ' ㎡'));
+  $kv.append(kv('공시지가', fmt(d.jiga) !== '-' ? fmt(d.jiga) + ' 원/㎡' : '-'));
+  $kv.append('<div class="land-kv-sec">🏗 용도계획</div>');
+  $kv.append(kv('용도지역', d.uname));
+  $kv.append(kv('지구단위계획', d.dgm_nm));
+  $kv.append('<div class="land-kv-sec">🌿 환경성평가</div>');
+  $kv.append(
+    '<div class="land-kv-row"><span class="land-kv-k">국토환경성평가</span>' +
+    '<span class="land-kv-v ecvam-val-ecvam">' + ecvamGrBadge(d.ecvam_gr) + '</span></div>'
+  );
+  $kv.append(
+    '<div class="land-kv-row"><span class="land-kv-k">생태자연도</span>' +
+    '<span class="land-kv-v ecvam-val-bio">' + ecvamGrBadge(d.bio_gr) + '</span></div>'
+  );
+  $item.append($kv);
+  $("#landList").append($item);
+
+  // ── 모바일 테이블 행 추가 ──
+  var seq = collectedLandInfo.length;
+  var $tr = $('<tr data-pnu="' + d.pnu + '"></tr>');
+  $tr.html(
+    '<td>' + seq + '</td>' +
+    '<td style="text-align:left;padding-left:8px">' + addrShort + '</td>' +
+    '<td>' + (d.jimok || '-') + '</td>' +
+    '<td>' + areaDisp + '</td>' +
+    '<td>' + (d.uname || '-') + '</td>' +
+    '<td>' + (d.dgm_nm || '-') + '</td>' +
+    '<td><button class="mob-del-btn" data-pnu="' + d.pnu + '">삭</button></td>'
+  );
+  $('#mobLandTbody').append($tr);
+  $('#mobLandTableWrap').addClass('active');
+
+  updateCnt();
+}
+
+/* ===================================================
+   새창 보기
+=================================================== */
+function openInNewWindow(pnu) {
+  var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+  if (!d) return;
+  var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
+  var fmt = function(v){ return (v && v !== '-' && !isNaN(v)) ? Number(v).toLocaleString() : (v || '-'); };
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>' + addr + ' - 토지정보</title>' +
+    '<style>' +
+    'body{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;margin:0;padding:16px;background:#f4f6fb;font-size:13px;}' +
+    'h2{color:#3a7bd5;margin:0 0 12px;font-size:15px;font-weight:700;}' +
+    '.card{background:#fff;border-radius:10px;padding:0;box-shadow:0 2px 12px rgba(0,0,0,.1);overflow:hidden;margin-bottom:12px;}' +
+    'table{width:100%;border-collapse:collapse;}' +
+    'tr{border-bottom:1px solid #f0f3fb;}' +
+    'tr:last-child{border-bottom:none;}' +
+    'td{padding:8px 12px;font-size:13px;}' +
+    'td:first-child{color:#555;font-weight:600;width:42%;background:#fafbff;}' +
+    'td:last-child{color:#222;}' +
+    '.sec{background:#f0f4ff;padding:8px 12px;font-weight:700;color:#3a7bd5;font-size:11px;letter-spacing:.5px;}' +
+    '.footer{font-size:10px;color:#aaa;text-align:center;margin-top:8px;}' +
+    '</style></head><body>' +
+    '<h2>📌 ' + addr + '</h2>' +
+    '<div class="card"><table>' +
+    '<tr><td class="sec" colspan="2">📌 기본 지적 정보</td></tr>' +
+    '<tr><td>필지번호(PNU)</td><td>' + (d.pnu||'-') + '</td></tr>' +
+    '<tr><td>지번</td><td>' + (d.jibun||'-') + '</td></tr>' +
+    '<tr><td>지목</td><td>' + (d.jimok||'-') + '</td></tr>' +
+    '<tr><td>면적(㎡)</td><td>' + fmt(d.area_||d.parea) + '</td></tr>' +
+    '<tr><td class="sec" colspan="2">💰 공시 정보</td></tr>' +
+    '<tr><td>공시지가(원/㎡)</td><td>' + fmt(d.jiga) + '</td></tr>' +
+    '<tr><td class="sec" colspan="2">🏗 용도계획정보</td></tr>' +
+    '<tr><td>용도지역</td><td>' + (d.uname||'-') + '</td></tr>' +
+    '<tr><td>지구단위계획구역</td><td>' + (d.dgm_nm||'-') + '</td></tr>' +
+    '<tr><td class="sec" colspan="2">🌿 환경성평가 정보</td></tr>' +
+    '<tr><td>국토환경성평가등급</td><td>' + (d.ecvam_gr && d.ecvam_gr !== '-' ? d.ecvam_gr + '등급' : '지도에서 확인') + '</td></tr>' +
+    '<tr><td>생태자연도등급</td><td>' + (d.bio_gr && d.bio_gr !== '-' ? d.bio_gr + '등급' : '지도에서 확인') + '</td></tr>' +
+    '<tr><td colspan="2" style="text-align:center;padding:6px;"><a href="https://ecvam.neins.go.kr" target="_blank" style="color:#339966;font-size:11px;font-weight:600;">🌿 국토환경성평가지도 바로가기 →</a></td></tr>' +
+    '</table></div>' +
+    '<p class="footer">© 2026 UrbanCNS · Powered by VWorld API · ' + new Date().toLocaleDateString('ko-KR') + '</p>' +
+    '</body></html>';
+
+  var win = window.open('', '_blank', 'width=480,height=660,menubar=no,toolbar=no,location=no,status=no');
+  if (win) { win.document.write(html); win.document.close(); }
+  else { showMsg("팝업이 차단되었습니다. 팝업 허용 후 다시 시도하세요.", "err"); }
+}
+
+/* ===================================================
+   모바일 Bottom Sheet 토글
+=================================================== */
+function toggleMobileSheet() {
+  var $side = $("#sidePanel");
+  var $toggle = $("#sheetPullToggle");
+  // 패널이 접혀있으면 펼치기, 펼쳐있으면 접기
+  if ($side.hasClass("sheet-collapsed")) {
+    $side.removeClass("sheet-collapsed");
+    $toggle.text("▼"); // 열린 상태 → 클릭 시 닫힘
+  } else {
+    $side.addClass("sheet-collapsed");
+    $toggle.text("▲"); // 닫힌 상태 → 클릭 시 열림
+  }
+}
+
+function autoOpenMobileSheet() {
+  if (window.innerWidth <= 768) {
+    // 패널이 접혀있으면 펼치기 (기본: 항상 열려있음)
+    $("#sidePanel").removeClass("sheet-collapsed");
+    $("#sheetPullToggle").text("▼");
+  }
+}
+
+function updateSheetLabel() {
+  var cnt = collectedLandInfo.length;
+  if (cnt === 0) {
+    $("#sheetPullLabel").text("토지정보를 클릭하여 조회하세요");
+  } else {
+    var totalArea = collectedLandInfo.reduce(function(sum, d){
+      var a = parseFloat(d.area_ || d.parea || 0);
+      return sum + (isNaN(a) ? 0 : a);
+    }, 0);
+    $("#sheetPullLabel").text(cnt + "필지 · " + Math.round(totalArea).toLocaleString() + "㎡");
+  }
+}
+
+/* ===================================================
+   마커
+=================================================== */
+function addMarker(lon, lat, d) {
+  var addr = [d.emd_nm, d.jibun].filter(Boolean).join(' ');
+  var fmt = function(v){ return (v && !isNaN(v)) ? Number(v).toLocaleString() : (v||'-'); };
+  var markerOpt = {
+    x: lon, y: lat, epsg: 'EPSG:4326',
+    title: addr,
+    contents: '지목: ' + (d.jimok||'-') + '<br>용도지역: ' + (d.uname||'-') + '<br>면적: ' + fmt(d.area_||d.parea) + '㎡',
+    iconUrl: 'https://map.vworld.kr/images/ol3/marker_red.png',
+    text: {
+      offsetX: 0.5, offsetY: -10,
+      font: '12px Malgun Gothic,sans-serif',
+      fill: { color: '#1a3a7a' },
+      stroke: { color: '#fff', width: 2 },
+      text: addr
+    },
+    attr: { id: 'mk_' + d.pnu }
+  };
+  var mk = markerLayer.addMarker(markerOpt);
+  markers.push({ pnu: d.pnu, marker: mk });
+}
+
+function removeMarker(pnu) {
+  var m = markers.find(function(x){ return x.pnu === pnu; });
+  if (m) { try{ markerLayer.removeMarker(m.marker); }catch(e){} markers = markers.filter(function(x){ return x.pnu !== pnu; }); }
+}
+
+/* ===================================================
+   삭제 / 전체 삭제
+=================================================== */
+$(document).on('click', '.del-btn, .mob-del-btn', function() {
+  var pnu = $(this).data('pnu');
+  if (currentMapType === "2d") removeHighlight2d(pnu);
+  else removeHighlight3d(pnu);
+  collectedLandInfo = collectedLandInfo.filter(function(x){ return x.pnu !== pnu; });
+  removeMarker(pnu);
+  $('.land-item[data-pnu="' + pnu + '"]').remove();
+  $('#mobLandTbody tr[data-pnu="' + pnu + '"]').remove();
+  $('#mobLandTbody tr').each(function(i){ $(this).find('td:first').text(i + 1); });
+  if ($('#mobLandTbody tr').length === 0) $('#mobLandTableWrap').removeClass('active');
+  updateCnt();
+  if (collectedLandInfo.length === 0) showEmptyState();
+  showMsg("선택한 토지 정보를 삭제했습니다.");
+});
+
+function clearLandInfo() {
+  if (!collectedLandInfo.length) return;
+  if (!confirm("수집된 모든 토지 정보를 삭제하시겠습니까?")) return;
+  clearHighlight();
+  collectedLandInfo = [];
+  markers.forEach(function(m){ try{ markerLayer.removeMarker(m.marker); }catch(e){} });
+  markers = [];
+  $("#landList .land-item").remove();
+  $("#mobLandTbody").empty();
+  $("#mobLandTableWrap").removeClass('active');
+  showEmptyState();
+  updateCnt();
+  showMsg("모든 토지 정보를 삭제했습니다.");
+}
+
+function showEmptyState() {
+  if (!$('#landList .empty-state').length) {
+    $('#landList').append('<div class="empty-state"><div class="ico">📍</div><p>지도에서 토지를 클릭하면<br>상세 정보가 표시됩니다</p></div>');
+  }
+}
+
+function updateCnt() {
+  var cnt = collectedLandInfo.length;
+  $("#landCnt").text("총 " + cnt + "건");
+  var totalArea = collectedLandInfo.reduce(function(sum, d){
+    var a = parseFloat(d.area_ || d.parea || 0);
+    return sum + (isNaN(a) ? 0 : a);
+  }, 0);
+  if (cnt > 0) {
+    $("#areaCnt").text(cnt);
+    var display = totalArea.toLocaleString('ko-KR', { maximumFractionDigits:1 }) + ' ㎡';
+    var pyeong = (totalArea * 0.3025).toLocaleString('ko-KR', { maximumFractionDigits:1 });
+    $("#areaSumVal").text(display + '  ≈  ' + pyeong + ' 평');
+    $("#areaSumBar").show();
+  } else {
+    $("#areaSumBar").hide();
+  }
+  updateSheetLabel();
+}
+
+/* ===================================================
+   주소 검색 (결과 목록 표시)
+=================================================== */
+function closeAddrResults() {
+  $('#addrResults').remove();
+}
+
+function selectAddrResult(lon, lat, label) {
+  closeAddrResults();
+  $("#addrInput").val(label);
+  moveTo(lon, lat);
+  showMsg("📍 '" + label + "' 위치로 이동 중...", "ok");
+  if (isLandParcelActive) { setTimeout(function(){ fetchLandInfo(lon, lat); }, 400); }
+}
+
+function showAddrResults(items) {
+  closeAddrResults();
+  if (!items || items.length === 0) { showMsg("주소를 찾을 수 없습니다.", "err"); return; }
+
+  var $drop = $('<div id="addrResults" class="addr-results"></div>');
+  items.forEach(function(item) {
+    var pt = item.point;
+    if (!pt) return;
+    var lon = parseFloat(pt.x), lat = parseFloat(pt.y);
+    var title = item.title || item.address || item.name || '';
+    var address = (item.address && typeof item.address === 'object')
+      ? (item.address.road || item.address.parcel || '')
+      : (item.address || '');
+    var label = title || address;
+    var $r = $('<div class="addr-result-item"></div>');
+    $r.append('<span class="addr-result-name">' + label + '</span>');
+    if (address && address !== label) {
+      $r.append('<span class="addr-result-addr">' + address + '</span>');
+    }
+    $r.on('click', function(){ selectAddrResult(lon, lat, label); });
+    $drop.append($r);
+  });
+
+  $('.search-row').append($drop);
+  // 외부 클릭 시 닫기
+  setTimeout(function(){
+    $(document).one('click.addrClose', function(e){
+      if (!$(e.target).closest('#addrResults, #addrInput').length) closeAddrResults();
+    });
+  }, 100);
+}
+
+function searchAddress() {
+  var q = $("#addrInput").val().trim();
+  if (!q) { showMsg("검색어를 입력하세요.", "err"); return; }
+  closeAddrResults();
+  
+  // "산" 뒤에 숫자가 바로 붙어있는 경우 공백 추가 (인식률 개선)
+  var qNormalized = q.replace(/산(\d+)/g, "산 $1");
+  
+  showMsg("🔍 주소를 검색 중입니다...");
+
+  // "산"이 포함된 경우 지번(parcel) 검색을 우선 시도
+  if (qNormalized.indexOf("산") > -1) {
+    doSearch(qNormalized, "parcel", function(found) {
+      if (!found) doSearch(qNormalized, "road");
+    });
+  } else {
+    // 일반 검색은 도로명(road) 우선
+    doSearch(qNormalized, "road", function(found) {
+      if (!found) doSearch(qNormalized, "parcel");
+    });
+  }
+}
+
+function doSearch(q, category, callback) {
+  $.ajax({
+    type: "get",
+    url: "https://api.vworld.kr/req/search",
+    data: {
+      service: "search", version: "2.0", request: "search", key: apiKey,
+      format: "json", size: 8, page: 1, query: q, type: "address",
+      category: category, crs: "EPSG:4326"
+    },
+    dataType: "jsonp",
+    success: function(data) {
+      var items = (data.response.status === "OK") ? (data.response.result.items || []) : [];
+      if (items.length > 0) {
+        if (items.length === 1) {
+          var item = items[0];
+          var title = item.title || '';
+          var address = (item.address && typeof item.address === 'object')
+            ? (item.address.road || item.address.parcel || '')
+            : (item.address || '');
+          var label = title || address || q;
+          selectAddrResult(parseFloat(item.point.x), parseFloat(item.point.y), label);
+        } else {
+          showAddrResults(items);
+        }
+        if (callback) callback(true);
+      } else {
+        if (callback) callback(false);
+        else if (category === "parcel") showMsg("주소를 찾을 수 없습니다: " + q, "err");
+      }
+    },
+    error: function() {
+      if (callback) callback(false);
+      else showMsg("주소 검색 오류가 발생했습니다.", "err");
+    }
+  });
+}
+
+function searchParcel(q) {
+  // 이전 호환성 유지용 (doSearch로 통합됨)
+  doSearch(q, "parcel");
+}
+
+function moveTo(lon, lat) {
+  if (currentMapType === "2d") {
+    map2d.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+    map2d.getView().setZoom(19);
+  } else {
+    map3d.moveTo(new vw.CameraPosition(
+      new vw.CoordZ(lon, lat, 800),
+      new vw.Direction(0, -90, 0)
+    ));
+  }
+}
+
+/* ===================================================
+   CSV 내보내기
+=================================================== */
+function exportToCSV() {
+  if (!collectedLandInfo.length) { showMsg("내보낼 데이터가 없습니다.", "err"); return; }
+  var fmt = function(v){ return (v && !isNaN(v)) ? Number(v).toLocaleString() : (v||''); };
+  var csv = "﻿순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),용도지역,지구단위계획구역,국토환경성평가등급,생태자연도등급\n";
+  var totalArea = 0;
+  collectedLandInfo.forEach(function(d, idx) {
+    var area = parseFloat(d.area_ || d.parea || 0);
+    if (!isNaN(area)) totalArea += area;
+    csv += [
+      idx + 1,
+      '="' + (d.pnu||'') + '"',
+      d.sido_nm||'', d.sgg_nm||'', d.emd_nm||'', d.ri_nm||'',
+      d.jibun||'', d.jimok||'',
+      fmt(d.area_||d.parea),
+      fmt(d.jiga),
+      d.uname||'', d.dgm_nm||'',
+      d.ecvam_gr||'', d.bio_gr||''
+    ].map(function(f){ return '"' + String(f).replace(/"/g,'""') + '"'; }).join(',') + '\n';
+  });
+  // 면적 합계 행 (14컬럼)
+  csv += '"합계","","","","","","","","' + Math.round(totalArea).toLocaleString() + '","","","","",""\n';
+  var blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = '토지조서_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showMsg("✅ CSV 파일(" + collectedLandInfo.length + "건)을 다운로드했습니다.", "ok");
+}
+
+/* ===================================================
+   이벤트
+=================================================== */
+function setupEvents() {
+  $("#addrInput").on('keydown', function(e){
+    if (e.key === 'Enter') searchAddress();
+    if (e.key === 'Escape') closeAddrResults();
+  });
+  // 모바일: 키보드 외부 클릭 시 검색결과 닫기
+  $(document).on('click', '#ol3map, #vmap', function(){ closeAddrResults(); });
+  // 모바일 테이블 스크롤 시 그라데이션 힌트 제거
+  $(document).on('scroll', '#mobLandTableWrap', function(){
+    if ($(this).scrollLeft() > 20) $(this).css('--mob-hint','0');
+  });
+  document.addEventListener('scroll', function(e){
+    if (e.target && e.target.id === 'mobLandTableWrap' && e.target.scrollLeft > 20) {
+      e.target.style.setProperty('--hide-hint','1');
+      // 한 번 스크롤하면 ::after 제거를 위한 class 추가
+      e.target.classList.add('scrolled');
+    }
+  }, true);
+}
+
+/* ===================================================
+   유틸
+=================================================== */
+function showMsg(msg, type) {
+  var $b = $("#statusBar");
+  $b.removeClass("ok err").addClass(type||'').text(msg).show();
+  clearTimeout($b.data('tid'));
+  $b.data('tid', setTimeout(function(){ $b.fadeOut(); }, 4000));
+}
+
+function dist(lon1,lat1,lon2,lat2) {
+  var R=6371000, f1=lat1*Math.PI/180, f2=lat2*Math.PI/180,
+      df=(lat2-lat1)*Math.PI/180, dl=(lon2-lon1)*Math.PI/180;
+  var a=Math.sin(df/2)*Math.sin(df/2)+Math.cos(f1)*Math.cos(f2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function getCenter(geom) {
+  try {
+    var coords = geom.type==='MultiPolygon' ? geom.coordinates[0][0] : geom.coordinates[0];
+    var sx=0, sy=0;
+    coords.forEach(function(p){ sx+=p[0]; sy+=p[1]; });
+    return [sx/coords.length, sy/coords.length];
+  } catch(e){ return [0,0]; }
+}
+
+function debounce(fn, wait) {
+  var t;
+  return function() {
+    var a=arguments, ctx=this;
+    clearTimeout(t);
+    t = setTimeout(function(){ fn.apply(ctx,a); }, wait);
+  };
+}

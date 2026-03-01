@@ -247,6 +247,8 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   .mob-land-tbl{width:100%;border-collapse:collapse;white-space:nowrap;}
   .mob-land-tbl thead th{background:#3a7bd5;color:#fff;padding:7px 6px;text-align:center;font-size:10px;font-weight:700;position:sticky;top:0;z-index:2;}
   .mob-land-tbl tbody td{padding:6px 5px;border-bottom:1px solid #eef1fb;text-align:center;color:#222;font-size:11px;}
+  .mob-land-tbl tbody tr{cursor:pointer;}
+  .mob-land-tbl tbody tr:hover td{background:#deeaff!important;}
   .mob-land-tbl tbody tr:nth-child(even) td{background:#f7f9ff;}
   .mob-land-tbl tbody tr:last-child td{border-bottom:none;}
   .mob-del-btn{padding:2px 6px;background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;}
@@ -1152,6 +1154,8 @@ function processLandData(data, lon, lat) {
     else addHighlight3d(best.geometry, d.pnu);
     d.ecvam_gr = '-';
     d.bio_gr   = '-';
+    d._lon = parcelCenter[0];
+    d._lat = parcelCenter[1];
     addLandInfo(d);        // 카드 즉시 추가 (등급은 '-' 표시 후 업데이트)
     addMarker(lon, lat, d);
     autoOpenMobileSheet();
@@ -1575,6 +1579,20 @@ function setupEvents() {
   // 모바일 테이블 스크롤 시 그라데이션 힌트 제거
   $(document).on('scroll', '#mobLandTableWrap', function(){
     if ($(this).scrollLeft() > 20) $(this).css('--mob-hint','0');
+  });
+  // 모바일 테이블 행 클릭 → 해당 토지 지도에서 확인
+  $(document).on('click', '#mobLandTbody tr', function(e) {
+    if ($(e.target).hasClass('mob-del-btn')) return;
+    var pnu = $(this).data('pnu');
+    var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+    if (!d || !d._lon || !d._lat) return;
+    moveTo(d._lon, d._lat);
+    if (window.innerWidth <= 768) {
+      $("#sidePanel").addClass("sheet-collapsed");
+      $("#sheetPullToggle").text("▲");
+    }
+    var label = [d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
+    showMsg("📍 " + label + " 위치로 이동", "ok");
   });
   document.addEventListener('scroll', function(e){
     if (e.target && e.target.id === 'mobLandTableWrap' && e.target.scrollLeft > 20) {

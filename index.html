@@ -3,11 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>토지정보 조회 시스템 beta ver.0.1</title>
-
-<!-- 광고 설정 (보안: client id 직접 노출 불가피 - 도메인 제한 권장) -->
-<meta name="google-adsense-account" content="ca-pub-4187457564577316">
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4187457564577316" crossorigin="anonymous"></script>
+<title>토지정보 조회 시스템</title>
 
 <!-- 외부 라이브러리 -->
 <script src="https://map.vworld.kr/js/vworldMapInit.js.do?version=2.0&apiKey=A12CEDAE-86F1-3453-BC92-3FD98BE14103"></script>
@@ -17,7 +13,6 @@
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"/>
 <script src="https://ecvam.neins.go.kr/apiConfirm.do?APIKEY=MUTW-PGHX-76CT-ENMD"></script>
 
-<!-- 애플리케이션 리소스 -->
 <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
@@ -27,7 +22,7 @@
     <div id="vmap" style="display:none;"></div>
     <div id="ol3map"></div>
     <div class="map-ctrl">
-      <select id="mapTypeSel" onchange="changeMapType()">
+      <select id="mapTypeSel" onchange="window.changeMapType()">
         <option value="2d" selected>🗺 2D 일반지도</option>
         <option value="3d">🌐 3D 지도</option>
       </select>
@@ -37,53 +32,28 @@
   <!-- 사이드 패널 -->
   <div class="side" id="sidePanel">
     <!-- 모바일 bottom sheet 핸들 -->
-    <div class="sheet-pull" id="sheetPull" onclick="toggleMobileSheet()">
+    <div class="sheet-pull" id="sheetPull" onclick="window.toggleMobileSheet()">
       <div class="sheet-pull-bar"></div>
       <span class="sheet-pull-label" id="sheetPullLabel">토지정보를 클릭하여 조회하세요</span>
       <span class="sheet-pull-toggle" id="sheetPullToggle">▼</span>
     </div>
 
-    <!-- 헤더 -->
+    <!-- 헤더 (데스크탑 전용) -->
     <div class="hd">
-      <h1>🏛 토지정보 조회 시스템 <span style="font-size:10px; font-weight:normal; opacity:0.7; vertical-align:middle; margin-left:4px;">beta ver.0.1</span></h1>
+      <h1>🏛 토지정보 조회 시스템</h1>
       <p>VWorld API 기반 지적정보 · 용도지역 · 지구단위 조회</p>
     </div>
 
     <!-- 주소 검색 -->
     <div class="search-row">
       <input id="addrInput" type="text" placeholder="주소 입력 (예: 판교로 242)"/>
-      <button onclick="searchAddress()">🔍 검색</button>
-    </div>
-
-    <!-- [광고 영역 A] 사이드바 상단 광고 슬롯 -->
-    <div class="ad-container sidebar-top-ad">
-      <ins class="adsbygoogle"
-           style="display:block"
-           data-ad-client="ca-pub-4187457564577316"
-           data-ad-slot="YOUR_AD_SLOT_ID"
-           data-ad-format="horizontal"
-           data-full-width-responsive="true"></ins>
-      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      <button onclick="window.searchAddress()">🔍 검색</button>
     </div>
 
     <!-- 내보내기/지우기 -->
     <div class="btn-row">
-      <button class="btn-export" onclick="exportToCSV()">💾 토지조서 내보내기</button>
-      <button class="btn-clear" onclick="clearLandInfo()">🗑 전체 삭제</button>
-    </div>
-
-    <!-- 옵션/주제도 (생략 가능 영역) -->
-    <div class="opt-table">
-      <table>
-        <tr>
-          <th>지도 타입</th>
-          <td><span id="currentMapType">2D 일반지도</span></td>
-        </tr>
-        <tr>
-          <th>토지정보 조회</th>
-          <td><input id="landChk" type="checkbox" onchange="toggleLandParcel(this.checked)"> 활성화</td>
-        </tr>
-      </table>
+      <button class="btn-export" onclick="window.exportToCSV()">💾 토지조서 내보내기</button>
+      <button class="btn-clear" onclick="window.clearLandInfo()">🗑 전체 삭제</button>
     </div>
 
     <!-- 상태 메시지/카운트 -->
@@ -97,7 +67,7 @@
       <span class="area-sum-val" id="areaSumVal">0 ㎡</span>
     </div>
 
-    <!-- 토지 목록 -->
+    <!-- 토지 목록 (모바일에서 최상단 배치) -->
     <div class="land-list" id="landList">
       <div id="mobLandTableWrap" class="mob-land-tbl-wrap">
         <table class="mob-land-tbl">
@@ -113,20 +83,34 @@
       </div>
     </div>
 
+    <!-- 옵션 테이블 -->
+    <div class="opt-table">
+      <table>
+        <tr>
+          <th>지도 타입</th>
+          <td><span id="currentMapType">2D 일반지도</span></td>
+        </tr>
+        <tr>
+          <th>토지정보 조회</th>
+          <td><input id="landChk" type="checkbox" onchange="window.toggleLandParcel(this.checked)"> 활성화</td>
+        </tr>
+      </table>
+    </div>
+
     <!-- 국토계획 주제도 -->
     <div class="theme-panel">
       <div class="theme-hd">
         <span class="theme-hd-title">📋 국토계획 주제도</span>
-        <button class="toggle-btn" onclick="toggleThemePanel()">펼치기</button>
+        <button class="toggle-btn" onclick="window.toggleThemePanel()">펼치기</button>
       </div>
-      <div id="themeList" style="display:none;"></div>
+      <div id="themeList"></div>
     </div>
 
     <!-- ECVAM 주제도 -->
     <div class="theme-panel" id="ecvamPanel">
       <div class="theme-hd">
         <span class="theme-hd-title">🌿 국토환경성평가 주제도</span>
-        <button class="toggle-btn" id="ecvamToggleBtn" onclick="toggleEcvamPanel()">펼치기</button>
+        <button class="toggle-btn" id="ecvamToggleBtn" onclick="window.toggleEcvamPanel()">펼치기</button>
       </div>
       <div id="ecvamThemeList" style="display:none;">
         <div class="ecvam-legend">
@@ -142,7 +126,6 @@
   </div>
 </div>
 
-<!-- 애플리케이션 로직 -->
 <script type="module" src="main.js"></script>
 </body>
 </html>

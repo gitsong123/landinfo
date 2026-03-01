@@ -1207,15 +1207,6 @@ function addLandInfo(d) {
   $kv.append('<div class="land-kv-sec">🏗 용도계획</div>');
   $kv.append(kv('용도지역', d.uname));
   $kv.append(kv('지구단위계획', d.dgm_nm));
-  $kv.append('<div class="land-kv-sec">🌿 환경성평가</div>');
-  $kv.append(
-    '<div class="land-kv-row"><span class="land-kv-k">국토환경성평가</span>' +
-    '<span class="land-kv-v ecvam-val-ecvam">' + ecvamGrBadge(d.ecvam_gr) + '</span></div>'
-  );
-  $kv.append(
-    '<div class="land-kv-row"><span class="land-kv-k">생태자연도</span>' +
-    '<span class="land-kv-v ecvam-val-bio">' + ecvamGrBadge(d.bio_gr) + '</span></div>'
-  );
   $item.append($kv);
   $("#landList").append($item);
 
@@ -1274,10 +1265,6 @@ function openInNewWindow(pnu) {
     '<tr><td class="sec" colspan="2">🏗 용도계획정보</td></tr>' +
     '<tr><td>용도지역</td><td>' + (d.uname||'-') + '</td></tr>' +
     '<tr><td>지구단위계획구역</td><td>' + (d.dgm_nm||'-') + '</td></tr>' +
-    '<tr><td class="sec" colspan="2">🌿 환경성평가 정보</td></tr>' +
-    '<tr><td>국토환경성평가등급</td><td>' + (d.ecvam_gr && d.ecvam_gr !== '-' ? d.ecvam_gr + '등급' : '지도에서 확인') + '</td></tr>' +
-    '<tr><td>생태자연도등급</td><td>' + (d.bio_gr && d.bio_gr !== '-' ? d.bio_gr + '등급' : '지도에서 확인') + '</td></tr>' +
-    '<tr><td colspan="2" style="text-align:center;padding:6px;"><a href="https://ecvam.neins.go.kr" target="_blank" style="color:#339966;font-size:11px;font-weight:600;">🌿 국토환경성평가지도 바로가기 →</a></td></tr>' +
     '</table></div>' +
     '<p class="footer">VWorld API · 토지정보조회시스템 · ' + new Date().toLocaleDateString('ko-KR') + '</p>' +
     '</body></html>';

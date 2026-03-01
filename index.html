@@ -456,6 +456,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
               <th>지목</th>
               <th>면적(㎡)</th>
               <th>용도지역</th>
+              <th>기타규제</th>
               <th>지구단위계획구역</th>
               <th></th>
             </tr>
@@ -2025,6 +2026,7 @@ function openTableWindow() {
     return s + (j > 0 ? Math.round(a * j) : 0);
   }, 0);
   var cnt = collectedLandInfo.length;
+  var _WIN_APIKEY = apiKey;
 
   var rows = collectedLandInfo.map(function(d, i) {
     var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).map(escHtml).join(' ');
@@ -2051,7 +2053,8 @@ function openTableWindow() {
       pnu: d.pnu||'', sido: d.sido_nm||'', sgg: d.sgg_nm||'',
       emd: d.emd_nm||'', ri: d.ri_nm||'', jibun: d.jibun||'',
       jimok: d.jimok||'', area: d.area_||d.parea||'', jiga: d.jiga||'',
-      uname: d.uname||'', dgm_nm: d.dgm_nm||''
+      uname: d.uname||'', dgm_nm: d.dgm_nm||'',
+      _geometry: d._geometry||null
     };
   }));
 
@@ -2064,13 +2067,27 @@ function openTableWindow() {
     'body{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;margin:0;padding:20px;background:#f8f9fb;font-size:13px;color:#222;}' +
     '.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}' +
     'h2{margin:0;font-size:17px;font-weight:700;color:#1a2a4a;}' +
-    '.summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}' +
+    '.btn-group{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}' +
+    '.summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;}' +
     '.sum-card{background:#fff;border:1px solid #d8dde8;border-left:4px solid #3a7bd5;border-radius:6px;padding:10px 20px;min-width:140px;}' +
     '.sum-label{font-size:11px;color:#777;margin-bottom:4px;}' +
     '.sum-val{font-size:20px;font-weight:700;color:#1a2a4a;}' +
     '.sum-sub{font-size:11px;color:#555;margin-top:3px;}' +
-    '.btn-csv{padding:7px 16px;background:#1a6fb5;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;}' +
+    '.main-wrap{display:flex;gap:16px;align-items:flex-start;}' +
+    '.map-panel{flex:0 0 440px;min-width:220px;display:none;}' +
+    '.map-inner{position:relative;border:1px solid #c8d6e8;border-radius:8px;overflow:hidden;background:#e8f0f8;min-height:80px;}' +
+    '.map-inner img{display:none;max-width:100%;}' +
+    '.map-inner svg{position:absolute;top:0;left:0;pointer-events:none;}' +
+    '.map-loading{display:flex;align-items:center;justify-content:center;padding:30px;color:#6688aa;font-size:12px;}' +
+    '.map-legend{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:10px;color:#555;justify-content:center;}' +
+    '.leg-box{width:16px;height:10px;background:rgba(255,30,30,0.25);border:2px solid #e00;border-radius:2px;flex-shrink:0;}' +
+    '.tbl-panel{flex:1;min-width:0;}' +
+    '.btn-csv{padding:6px 12px;background:#1a6fb5;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;}' +
     '.btn-csv:hover{background:#155a94;}' +
+    '.btn-map{padding:6px 12px;background:linear-gradient(135deg,#11998e,#38ef7d);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;}' +
+    '.btn-map:hover{opacity:.88;}' +
+    '.btn-pdf{padding:6px 12px;background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;}' +
+    '.btn-pdf:hover{opacity:.88;}' +
     '.btn-del{padding:3px 10px;background:#c0392b;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;}' +
     '.btn-del:hover{background:#a93226;}' +
     '.tbl-wrap{overflow-x:auto;border:1px solid #d0d5e0;border-radius:6px;background:#fff;}' +
@@ -2085,11 +2102,23 @@ function openTableWindow() {
     'tbody tr:hover td{background:#e8eef8;}' +
     'tfoot td{padding:8px 11px;font-size:12px;font-weight:700;background:#edf1f9;border-top:2px solid #b0bcd8;border-right:1px solid #d0d5e0;text-align:center;}' +
     'tfoot td:last-child{border-right:none;}' +
-    '.foot{margin-top:10px;text-align:right;font-size:11px;color:#aaa;}' +
-    '@media print{.btn-csv,.btn-del{display:none;} body{padding:8px;}}' +
+    '.foot{margin-top:12px;text-align:right;font-size:11px;color:#aaa;}' +
+    '@media print{' +
+      '.no-print{display:none!important;}' +
+      'body{padding:8px;background:#fff;}' +
+      '.main-wrap{flex-direction:row;gap:10px;}' +
+      '.map-panel{flex:0 0 290px!important;}' +
+      '.tbl-wrap{overflow:visible;}' +
+      'table{font-size:10px;}' +
+      'thead{display:table-header-group;}' +
+      'tfoot{display:table-footer-group;}' +
+      '.sum-card{padding:6px 10px;min-width:100px;}' +
+      '.sum-val{font-size:14px;}' +
+    '}' +
+    '@page{size:A4 landscape;margin:12mm;}' +
     '</style></head><body>' +
     '<div class="header"><h2>토지 목록</h2>' +
-      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+      '<div class="btn-group no-print">' +
         '<span style="font-size:11px;color:#777;font-weight:600;">정렬:</span>' +
         '<button id="ws0" class="wsort" onclick="sortTable(\'newest\')" style="padding:3px 9px;border:1px solid #b0bcd8;border-radius:4px;background:#3a7bd5;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">최신순</button>' +
         '<button id="ws1" class="wsort" onclick="sortTable(\'asc\')" style="padding:3px 9px;border:1px solid #b0bcd8;border-radius:4px;background:#eaf0fb;color:#3a7bd5;font-size:11px;font-weight:700;cursor:pointer;">지번▲</button>' +
@@ -2097,12 +2126,11 @@ function openTableWindow() {
         '<span style="color:#ddd;">|</span>' +
         '<span style="font-size:11px;color:#777;font-weight:600;">금액단위:</span>' +
         '<select onchange="changeUnit(this.value)" style="border:1px solid #b0bcd8;border-radius:5px;background:#eaf3fb;color:#1a5fa8;font-size:12px;font-weight:700;padding:3px 7px;cursor:pointer;outline:none;">' +
-          '<option value="원">원</option>' +
-          '<option value="천원">천원</option>' +
-          '<option value="백만원">백만원</option>' +
-          '<option value="억원">억원</option>' +
+          '<option value="원">원</option><option value="천원">천원</option><option value="백만원">백만원</option><option value="억원">억원</option>' +
         '</select>' +
-        '<button class="btn-csv" onclick="exportCSV()">토지조서 내보내기 (CSV)</button>' +
+        '<button class="btn-csv" onclick="exportCSV()">💾 토지조서 (CSV)</button>' +
+        '<button id="btnMapToggle" class="btn-map" onclick="toggleMap()">🗺 선택한 지적 보기</button>' +
+        '<button class="btn-pdf" onclick="exportPDF()">📄 PDF 내보내기</button>' +
       '</div>' +
     '</div>' +
     '<div class="summary">' +
@@ -2111,23 +2139,96 @@ function openTableWindow() {
         '<div class="sum-sub" id="sumPyeong">≈ ' + Math.round(totalArea * 0.3025).toLocaleString() + ' 평</div></div>' +
       '<div class="sum-card" style="border-left-color:#e67e22;"><div class="sum-label">공시지가 총액</div><div class="sum-val" id="sumJiga" style="color:#c0392b;">' + totalJigaWin.toLocaleString('ko-KR') + ' 원</div></div>' +
     '</div>' +
-    '<div class="tbl-wrap"><table>' +
-    '<thead><tr><th>순번</th><th>주소</th><th>지목</th><th>면적(㎡)</th>' +
-      '<th>공시지가(원/㎡)</th><th>공시지가 총액(원)</th><th>용도지역</th><th>지구단위계획구역</th><th>삭제</th>' +
-    '</tr></thead>' +
-    '<tbody id="tbl-body">' + rows + '</tbody>' +
-    '<tfoot><tr>' +
-      '<td colspan="3" style="text-align:right;">합  계</td>' +
-      '<td id="footArea" style="text-align:right;">' + Math.round(totalArea).toLocaleString() + '</td>' +
-      '<td></td>' +
-      '<td id="footJiga" style="text-align:right;color:#c0392b;font-weight:700;">' + totalJigaWin.toLocaleString('ko-KR') + ' 원</td>' +
-      '<td colspan="3"></td>' +
-    '</tr></tfoot>' +
-    '</table></div>' +
+    '<div class="main-wrap">' +
+      '<div id="mapPanel" class="map-panel">' +
+        '<div class="map-inner" id="mapInner">' +
+          '<div class="map-loading" id="mapLoading">🗺 지도 불러오는 중...</div>' +
+          '<img id="wmsMapImg" src="" alt="지적도"' +
+            ' onload="this.style.display=\'block\';document.getElementById(\'mapLoading\').style.display=\'none\';"' +
+            ' onerror="document.getElementById(\'mapLoading\').textContent=\'지도 로딩 실패 — API 키 또는 네트워크 확인\'">' +
+          '<svg id="parcSvg" style="position:absolute;top:0;left:0;pointer-events:none;"></svg>' +
+        '</div>' +
+        '<div class="map-legend"><span class="leg-box"></span><span>선택된 필지 (붉은색 표시)</span></div>' +
+      '</div>' +
+      '<div id="tblPanel" class="tbl-panel">' +
+        '<div class="tbl-wrap"><table>' +
+        '<thead><tr><th>순번</th><th>주소</th><th>지목</th><th>면적(㎡)</th>' +
+          '<th>공시지가(원/㎡)</th><th>공시지가 총액(원)</th><th>용도지역</th><th>지구단위계획구역</th><th class="no-print">삭제</th>' +
+        '</tr></thead>' +
+        '<tbody id="tbl-body">' + rows + '</tbody>' +
+        '<tfoot><tr>' +
+          '<td colspan="3" style="text-align:right;">합  계</td>' +
+          '<td id="footArea" style="text-align:right;">' + Math.round(totalArea).toLocaleString() + '</td>' +
+          '<td></td>' +
+          '<td id="footJiga" style="text-align:right;color:#c0392b;font-weight:700;">' + totalJigaWin.toLocaleString('ko-KR') + ' 원</td>' +
+          '<td colspan="3"></td>' +
+        '</tr></tfoot>' +
+        '</table></div>' +
+      '</div>' +
+    '</div>' +
     '<div class="foot">토지정보 조회 시스템 &nbsp;·&nbsp; ' + new Date().toLocaleDateString('ko-KR') + '</div>' +
     '<script>' +
+    'var _AK="' + _WIN_APIKEY + '";' +
     'var _data=' + dataJson + ';' +
     'var _origOrder=_data.map(function(d){return d.pnu;});' +
+    'var _mapVisible=false;' +
+    'function toggleMap(){' +
+    '  if(_mapVisible){' +
+    '    document.getElementById("mapPanel").style.display="none";' +
+    '    document.getElementById("btnMapToggle").textContent="🗺 선택한 지적 보기";' +
+    '    _mapVisible=false;' +
+    '  } else {' +
+    '    renderMap();' +
+    '    document.getElementById("btnMapToggle").textContent="🗺 지도 닫기";' +
+    '    _mapVisible=true;' +
+    '  }' +
+    '}' +
+    'function renderMap(){' +
+    '  var mnX=Infinity,mxX=-Infinity,mnY=Infinity,mxY=-Infinity,hasG=false;' +
+    '  _data.forEach(function(d){' +
+    '    var g=d._geometry;if(!g)return;hasG=true;' +
+    '    var rings=g.type==="MultiPolygon"?[g.coordinates[0][0]]:[g.coordinates[0]];' +
+    '    rings.forEach(function(r){r.forEach(function(c){' +
+    '      if(c[0]<mnX)mnX=c[0];if(c[0]>mxX)mxX=c[0];' +
+    '      if(c[1]<mnY)mnY=c[1];if(c[1]>mxY)mxY=c[1];' +
+    '    });});' +
+    '  });' +
+    '  var panel=document.getElementById("mapPanel");' +
+    '  if(!hasG){' +
+    '    document.getElementById("mapLoading").textContent="지형 데이터 없음 — 최신 버전에서 조회한 필지만 지도에 표시됩니다.";' +
+    '    panel.style.display="block";return;' +
+    '  }' +
+    '  var pX=Math.max((mxX-mnX)*0.3,0.0008),pY=Math.max((mxY-mnY)*0.3,0.0008);' +
+    '  mnX-=pX;mxX+=pX;mnY-=pY;mxY+=pY;' +
+    '  var mW=440,mH=Math.round(mW*(mxY-mnY)/(mxX-mnX)*1.25);' +
+    '  mH=Math.max(260,Math.min(520,mH));' +
+    '  var bbox=mnX+","+mnY+","+mxX+","+mxY;' +
+    '  var url="https://api.vworld.kr/req/wms?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1"' +
+    '    +"&LAYERS=lt_c_landinfobasemap&STYLES=&SRS=EPSG:4326"' +
+    '    +"&BBOX="+bbox+"&WIDTH="+mW+"&HEIGHT="+mH' +
+    '    +"&FORMAT=image/png&TRANSPARENT=FALSE&KEY="+_AK;' +
+    '  var img=document.getElementById("wmsMapImg");' +
+    '  img.style.width=mW+"px";img.style.height=mH+"px";img.src=url;' +
+    '  var inner=document.getElementById("mapInner");' +
+    '  inner.style.width=mW+"px";inner.style.height=mH+"px";' +
+    '  var svg=document.getElementById("parcSvg");' +
+    '  svg.setAttribute("viewBox","0 0 "+mW+" "+mH);' +
+    '  svg.style.width=mW+"px";svg.style.height=mH+"px";' +
+    '  var sc="";' +
+    '  _data.forEach(function(d){' +
+    '    var g=d._geometry;if(!g)return;' +
+    '    var rings=g.type==="MultiPolygon"?g.coordinates[0]:g.coordinates;' +
+    '    var pts=rings[0].map(function(c){' +
+    '      return ((c[0]-mnX)/(mxX-mnX)*mW).toFixed(1)+","+(mH-(c[1]-mnY)/(mxY-mnY)*mH).toFixed(1);' +
+    '    }).join(" ");' +
+    '    sc+=\'<polygon points="\'+pts+\'" fill="rgba(255,30,30,0.25)" stroke="#dd0000" stroke-width="2" stroke-linejoin="round"/>\';' +
+    '  });' +
+    '  svg.innerHTML=sc;' +
+    '  panel.style.display="block";' +
+    '}' +
+    'function exportPDF(){' +
+    '  window.print();' +
+    '}' +
     'function naturalCmpW(a,b){' +
     '  var as=/^산/.test(String(a))?1:0,bs=/^산/.test(String(b))?1:0;' +
     '  if(as!==bs)return as-bs;' +

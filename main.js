@@ -172,7 +172,8 @@ function fetchLandInfo(lon, lat) {
     url: "https://api.vworld.kr/req/wfs",
     data: {
       key: apiKey, SERVICE: "WFS", version: "1.1.0", request: "GetFeature",
-      TYPENAME: "lt_c_landinfobasemap,lt_c_uq111,lt_c_upisuq161",
+      // 기타규제(114), 도시계획시설(121), 농업진흥지역(162), 산지구분(164) 추가
+      TYPENAME: "lt_c_landinfobasemap,lt_c_uq111,lt_c_upisuq161,lt_c_uq114,lt_c_uq121,lt_c_uq162,lt_c_uq164",
       OUTPUT: "text/javascript", SRSNAME: "EPSG:4326", BBOX: bbox
     },
     dataType: "jsonp",
@@ -188,11 +189,31 @@ function fetchLandInfo(lon, lat) {
 }
 
 function processLandData(data, lon, lat) {
-  var feats = data.features.filter(function(f){ return f.id.includes("lt_c_landinfobasemap"); });
-  if (feats.length === 0) return;
+  var baseFeats = data.features.filter(function(f){ return f.id.includes("lt_c_landinfobasemap"); });
+  if (baseFeats.length === 0) return;
 
-  var best = feats[0];
+  var best = baseFeats[0];
   var d = best.properties;
+
+  // 1. 기타규제 및 특수구역 추출 (114, 162, 164)
+  var regList = [];
+  data.features.forEach(function(f) {
+    if (f.id.includes("lt_c_uq114") || f.id.includes("lt_c_uq162") || f.id.includes("lt_c_uq164")) {
+      var name = f.properties.uname || f.properties.name || f.properties.grad_nm;
+      if (name && !regList.includes(name)) regList.push(name);
+    }
+  });
+  d.reg = regList.length > 0 ? regList.join(", ") : "-";
+
+  // 2. 도시계획시설 추출 (121)
+  var facList = [];
+  data.features.forEach(function(f) {
+    if (f.id.includes("lt_c_uq121")) {
+      var name = f.properties.uname || f.properties.fac_nm;
+      if (name && !facList.includes(name)) facList.push(name);
+    }
+  });
+  d.facilities = facList.length > 0 ? facList.join(", ") : "-";
 
   if (collectedLandInfo.some(function(x){ return x.pnu === d.pnu; })) {
     showMsg("이미 추가된 필지입니다."); return;
@@ -214,15 +235,43 @@ function processLandData(data, lon, lat) {
 
 function addLandInfo(d) {
   collectedLandInfo.push(d);
-  var $tr = $('<tr data-pnu="'+d.pnu+'"><td>'+collectedLandInfo.length+'</td><td>'+d.emd_nm+' '+d.jibun+'</td><td>'+d.jimok+'</td><td>'+Math.round(d.parea || 0)+'</td><td>'+(d.uname||'-')+'</td><td><button class="mob-del-btn" onclick="window.removeLand(\''+d.pnu+'\')">삭</button></td></tr>');
+  
+  // ── 데스크탑 카드 생성 ──
+  var addr = d.emd_nm + ' ' + d.jibun;
+  var $card = $('<div class="land-item" data-pnu="'+d.pnu+'">' +
+    '<div class="land-item-hd"><span>'+addr+'</span><button class="del-btn" onclick="window.removeLand(\''+d.pnu+'\')">삭제</button></div>' +
+    '<div class="land-kv">' +
+      '<div class="land-kv-sec">📐 기본정보</div>' +
+      '<div class="land-kv-row"><span class="land-kv-k">지목/면적</span><span class="land-kv-v">'+d.jimok+' / '+Math.round(d.parea||0)+'㎡</span></div>' +
+      '<div class="land-kv-sec">🏗 용도 및 규제</div>' +
+      '<div class="land-kv-row"><span class="land-kv-k">용도지역</span><span class="land-kv-v">'+(d.uname||'-')+'</span></div>' +
+      '<div class="land-kv-row"><span class="land-kv-k">기타규제</span><span class="land-kv-v" style="color:#d35400">'+(d.reg||'-')+'</span></div>' +
+      '<div class="land-kv-row"><span class="land-kv-k">계획시설</span><span class="land-kv-v" style="color:#2980b9">'+(d.facilities||'-')+'</span></div>' +
+    '</div>' +
+  '</div>');
+  $('#landList').append($card);
+
+  // ── 모바일 테이블 행 추가 (기존 순서 유지하며 기타규제 칸 활용) ──
+  var $tr = $('<tr data-pnu="'+d.pnu+'">' +
+    '<td>'+collectedLandInfo.length+'</td>' +
+    '<td>'+addr+'</td>' +
+    '<td>'+d.jimok+'</td>' +
+    '<td>'+Math.round(d.parea || 0)+'</td>' +
+    '<td>'+(d.uname||'-')+'</td>' +
+    '<td>'+(d.reg !== '-' ? d.reg : (d.facilities !== '-' ? '시설:'+d.facilities : '-'))+'</td>' +
+    '<td>'+(d.dgm_nm||'-')+'</td>' +
+    '<td><button class="mob-del-btn" onclick="window.removeLand(\''+d.pnu+'\')">삭</button></td>' +
+  '</tr>');
   $('#mobLandTbody').append($tr);
   $('#mobLandTableWrap').addClass('active');
+  
   updateUI();
 }
 
 window.removeLand = function(pnu) {
   if (selectedFeatures[pnu]) highlightLayer.getSource().removeFeature(selectedFeatures[pnu]);
   collectedLandInfo = collectedLandInfo.filter(function(x){ return x.pnu !== pnu; });
+  $('.land-item[data-pnu="'+pnu+'"]').remove();
   $('tr[data-pnu="'+pnu+'"]').remove();
   updateUI();
 };
@@ -234,9 +283,11 @@ function updateUI() {
   if (collectedLandInfo.length > 0) {
     $("#areaSumBar").show();
     $("#sheetPullLabel").text(collectedLandInfo.length + "필지 · " + Math.round(total).toLocaleString() + "㎡");
+    $(".empty-state").hide();
   } else {
     $("#areaSumBar").hide();
     $("#sheetPullLabel").text("토지정보를 클릭하여 조회하세요");
+    $(".empty-state").show();
   }
 }
 
@@ -260,10 +311,23 @@ function debounce(fn, wait) {
   var t; return function() { clearTimeout(t); var ctx=this, args=arguments; t=setTimeout(function(){ fn.apply(ctx,args); }, wait); };
 }
 
+/* CSV 내보내기 보강 */
+window.exportToCSV = function() {
+  if (collectedLandInfo.length === 0) return alert("데이터가 없습니다.");
+  var csv = "\uFEFF순번,주소,지목,면적(㎡),용도지역,기타규제,도시계획시설,지구단위계획\n";
+  collectedLandInfo.forEach(function(d, i) {
+    csv += [i+1, d.emd_nm+' '+d.jibun, d.jimok, Math.round(d.parea||0), d.uname, d.reg, d.facilities, d.dgm_nm].join(",") + "\n";
+  });
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "토지정보리스트.csv";
+  link.click();
+};
+
 /* 나머지 윈도우 바인딩 */
 window.toggleThemePanel = function() { $("#themeList").slideToggle(); };
 window.toggleEcvamPanel = function() { $("#ecvamThemeList").slideToggle(); };
 window.toggleMobileSheet = function() { $("#sidePanel").toggleClass("sheet-collapsed"); };
 window.clearLandInfo = function() { if(confirm("초기화하시겠습니까?")) location.reload(); };
-window.exportToCSV = function() { alert("내보내기 기능 준비 중"); };
 function initThemeList() {}

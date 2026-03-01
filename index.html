@@ -1,8 +1,15 @@
 <!DOCTYPE html>
+<!--
+  토지정보 조회 시스템
+  Copyright (c) 2025 landinfo. All rights reserved.
+  무단 복제, 배포, 수정을 금합니다.
+  Unauthorized copying, distribution, or modification of this software is prohibited.
+-->
 <html style="height:100%;margin:0;padding:0;">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="robots" content="noindex, noarchive, nosnippet"/>
 <meta name="google-adsense-account" content="ca-pub-4187457564577316">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4187457564577316" crossorigin="anonymous"></script>
 <title>토지정보 조회 시스템</title>
@@ -414,6 +421,22 @@ var cache = {};
 var highlightLayer = null;
 var highlight3dEntities = {};
 var selectedFeatures = {};
+
+/* HTML 특수문자 이스케이프 (XSS 방지) */
+function escHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+/* onclick 속성 내 문자열 이스케이프 */
+function escAttr(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[^a-zA-Z0-9\-_]/g, '');
+}
 
 /* (산지구분 코드 제거됨) */
 
@@ -1178,26 +1201,26 @@ function addLandInfo(d) {
   $(".empty-state").remove();
   collectedLandInfo.push(d);
 
-  var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
+  var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).map(escHtml).join(' ');
   var fmt = function(v){ return (v && v !== '-' && !isNaN(v)) ? Number(v).toLocaleString() : (v || '-'); };
-  var safePnu = (d.pnu || '').replace(/'/g, '');
+  var safePnu = escAttr(d.pnu);
 
-  var $item = $('<div class="land-item" data-pnu="' + d.pnu + '"></div>');
+  var $item = $('<div class="land-item" data-pnu="' + escHtml(d.pnu) + '"></div>');
   $item.append(
     '<div class="land-item-hd">' +
       '<span title="' + addr + '">' + addr + '</span>' +
       '<button class="newwin-btn" onclick="openInNewWindow(\'' + safePnu + '\')">🔗 새창</button>' +
-      '<button class="del-btn" data-pnu="' + d.pnu + '">삭제</button>' +
+      '<button class="del-btn" data-pnu="' + escHtml(d.pnu) + '">삭제</button>' +
     '</div>'
   );
 
-  var addrShort = [d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
+  var addrShort = [d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).map(escHtml).join(' ');
   var rawArea = d.area_ || d.parea;
   var areaDisp = (rawArea && !isNaN(rawArea)) ? Math.round(Number(rawArea)).toLocaleString() : '-';
 
   // ── 심플 key:value 카드 (데스크탑용) ──
   function kv(k, v) {
-    return '<div class="land-kv-row"><span class="land-kv-k">' + k + '</span><span class="land-kv-v">' + (v || '-') + '</span></div>';
+    return '<div class="land-kv-row"><span class="land-kv-k">' + escHtml(k) + '</span><span class="land-kv-v">' + escHtml(v || '-') + '</span></div>';
   }
   var $kv = $('<div class="land-kv"></div>');
   $kv.append('<div class="land-kv-sec">📐 기본정보</div>');
@@ -1212,15 +1235,15 @@ function addLandInfo(d) {
 
   // ── 모바일 테이블 행 추가 ──
   var seq = collectedLandInfo.length;
-  var $tr = $('<tr data-pnu="' + d.pnu + '"></tr>');
+  var $tr = $('<tr data-pnu="' + escHtml(d.pnu) + '"></tr>');
   $tr.html(
     '<td>' + seq + '</td>' +
     '<td style="text-align:left;padding-left:8px">' + addrShort + '</td>' +
-    '<td>' + (d.jimok || '-') + '</td>' +
+    '<td>' + escHtml(d.jimok || '-') + '</td>' +
     '<td>' + areaDisp + '</td>' +
-    '<td>' + (d.uname || '-') + '</td>' +
-    '<td>' + (d.dgm_nm || '-') + '</td>' +
-    '<td><button class="mob-del-btn" data-pnu="' + d.pnu + '">삭</button></td>'
+    '<td>' + escHtml(d.uname || '-') + '</td>' +
+    '<td>' + escHtml(d.dgm_nm || '-') + '</td>' +
+    '<td><button class="mob-del-btn" data-pnu="' + escHtml(d.pnu) + '">삭</button></td>'
   );
   $('#mobLandTbody').append($tr);
   $('#mobLandTableWrap').addClass('active');
@@ -1558,18 +1581,18 @@ function openTableWindow() {
   var cnt = collectedLandInfo.length;
 
   var rows = collectedLandInfo.map(function(d, i) {
-    var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
+    var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).map(escHtml).join(' ');
     var area = parseFloat(d.area_ || d.parea || 0);
     var areaDisp = isNaN(area) ? '-' : Math.round(area).toLocaleString();
-    var safePnu = (d.pnu||'').replace(/'/g, '');
+    var safePnu = escAttr(d.pnu);
     return '<tr data-pnu="' + safePnu + '">' +
       '<td>' + (i + 1) + '</td>' +
       '<td class="al">' + addr + '</td>' +
-      '<td>' + (d.jimok || '-') + '</td>' +
+      '<td>' + escHtml(d.jimok || '-') + '</td>' +
       '<td class="ar">' + areaDisp + '</td>' +
-      '<td class="ar">' + fmt(d.jiga) + '</td>' +
-      '<td>' + (d.uname || '-') + '</td>' +
-      '<td>' + (d.dgm_nm || '-') + '</td>' +
+      '<td class="ar">' + escHtml(fmt(d.jiga)) + '</td>' +
+      '<td>' + escHtml(d.uname || '-') + '</td>' +
+      '<td>' + escHtml(d.dgm_nm || '-') + '</td>' +
       '<td><button class="btn-del" onclick="deleteRow(\'' + safePnu + '\',this)">삭제</button></td>' +
     '</tr>';
   }).join('');

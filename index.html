@@ -119,6 +119,47 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 .addr-result-addr{font-size:11px;color:#888;}
 
 
+/* ── 도움말 버튼 ── */
+.help-btn{position:absolute;top:14px;right:14px;width:28px;height:28px;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.7);border-radius:50%;color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:background .2s;}
+.help-btn:hover{background:rgba(255,255,255,.45);}
+
+/* ── 도움말 모달 오버레이 ── */
+#helpModal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,20,50,.55);backdrop-filter:blur(3px);}
+#helpModal.open{display:flex;align-items:center;justify-content:center;}
+.help-modal-box{background:#fff;border-radius:14px;width:min(680px,96vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.3);overflow:hidden;}
+.help-modal-hd{background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.help-modal-hd h2{margin:0;font-size:17px;font-weight:700;}
+.help-modal-hd p{margin:4px 0 0;font-size:11px;opacity:.85;}
+.help-modal-close{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;}
+.help-modal-close:hover{background:rgba(255,255,255,.4);}
+.help-modal-body{overflow-y:auto;padding:20px 22px 24px;flex:1;}
+.help-modal-body::-webkit-scrollbar{width:5px;}
+.help-modal-body::-webkit-scrollbar-thumb{background:#b0bcd8;border-radius:3px;}
+
+/* 섹션 */
+.hm-sec{margin-bottom:22px;}
+.hm-sec-title{font-size:14px;font-weight:700;color:#2255a4;border-left:4px solid #3a7bd5;padding-left:10px;margin-bottom:10px;}
+.hm-row{display:flex;gap:8px;margin-bottom:7px;align-items:flex-start;}
+.hm-icon{font-size:18px;flex-shrink:0;width:26px;text-align:center;margin-top:1px;}
+.hm-text{font-size:12px;color:#333;line-height:1.6;}
+.hm-text strong{color:#1a3a80;font-weight:700;}
+.hm-badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:#3a7bd5;margin:0 2px;}
+.hm-badge.green{background:#27ae60;}.hm-badge.orange{background:#e67e22;}.hm-badge.purple{background:#8e44ad;}.hm-badge.red{background:#e74c3c;}
+.hm-tip{background:#f0f6ff;border:1px solid #c8daff;border-radius:6px;padding:8px 12px;font-size:11px;color:#2255a4;margin-top:6px;line-height:1.7;}
+.hm-divider{border:none;border-top:1px solid #eee;margin:18px 0;}
+.hm-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px;}
+.hm-table th{background:#f0f4ff;color:#2255a4;font-weight:700;padding:6px 10px;text-align:left;border:1px solid #dde3f5;}
+.hm-table td{padding:6px 10px;border:1px solid #eef1fb;color:#333;line-height:1.5;}
+.hm-table tr:nth-child(even) td{background:#fafbff;}
+
+/* 모바일 도움말 모달 */
+@media(max-width:768px){
+  .help-modal-box{width:100%;max-height:100vh;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;}
+  #helpModal.open{align-items:flex-end;}
+  .help-modal-body{padding:14px 16px 20px;}
+  .help-modal-hd{padding:14px 16px;}
+}
+
 /* 스크롤바 */
 .land-list::-webkit-scrollbar{width:6px;}
 .land-list::-webkit-scrollbar-track{background:#f0f3fb;}
@@ -303,9 +344,10 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     </div>
 
     <!-- 헤더 -->
-    <div class="hd">
+    <div class="hd" style="position:relative;">
       <h1>🏛 토지정보 조회 시스템</h1>
       <p>VWorld API 기반 지적정보 · 용도지역 · 지구단위 · 규제현황 조회</p>
+      <button class="help-btn" onclick="openHelp()" title="사용설명서">?</button>
     </div>
 
     <!-- 주소 검색 -->
@@ -430,6 +472,185 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     <div class="footer">© 2025 토지정보조회시스템 · Powered by VWorld API</div>
   </div>
 </div>
+
+<!-- ====================================================
+     도움말 모달
+===================================================== -->
+<div id="helpModal" onclick="closeHelpOutside(event)">
+  <div class="help-modal-box">
+    <div class="help-modal-hd">
+      <div>
+        <h2>📖 토지정보 조회 시스템 사용설명서</h2>
+        <p>VWorld API 기반 지적정보 · 용도지역 · 환경성평가 조회 가이드</p>
+      </div>
+      <button class="help-modal-close" onclick="closeHelp()">✕</button>
+    </div>
+    <div class="help-modal-body">
+
+      <!-- 1. 시작하기 -->
+      <div class="hm-sec">
+        <div class="hm-sec-title">1. 시작하기</div>
+        <div class="hm-row">
+          <div class="hm-icon">🗺</div>
+          <div class="hm-text">사이트에 접속하면 <strong>2D 지도</strong>와 함께 <strong>지적도 레이어</strong>가 자동으로 활성화됩니다. 지도를 충분히 확대하면 지적선(필지 경계)이 표시됩니다.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">🔍</div>
+          <div class="hm-text">우측 패널 상단의 <strong>주소 검색창</strong>에 주소를 입력하고 검색하면 해당 위치로 이동합니다.<br>예) <em>판교로 242</em> &nbsp;/&nbsp; <em>서울 강남구 역삼동 837</em></div>
+        </div>
+        <div class="hm-tip">💡 지적선이 보이지 않으면 지도를 더 확대해 주세요. 화면 하단에 <strong>"확대해야 지적선이 보입니다"</strong> 안내가 나타납니다.</div>
+      </div>
+
+      <hr class="hm-divider"/>
+
+      <!-- 2. 지도 조작 -->
+      <div class="hm-sec">
+        <div class="hm-sec-title">2. 지도 조작</div>
+        <table class="hm-table">
+          <tr><th>동작</th><th>PC</th><th>모바일</th></tr>
+          <tr><td>이동</td><td>마우스 드래그</td><td>손가락 드래그</td></tr>
+          <tr><td>확대/축소</td><td>마우스 휠 스크롤</td><td>두 손가락 핀치</td></tr>
+          <tr><td>토지 정보 조회</td><td>지도 위 클릭</td><td>지도 위 탭</td></tr>
+        </table>
+        <div class="hm-row" style="margin-top:10px;">
+          <div class="hm-icon">🌐</div>
+          <div class="hm-text">지도 좌측 상단 드롭다운에서 <strong>2D 일반지도</strong>와 <strong>3D 지도</strong>를 전환할 수 있습니다.</div>
+        </div>
+      </div>
+
+      <hr class="hm-divider"/>
+
+      <!-- 3. 토지 정보 조회 -->
+      <div class="hm-sec">
+        <div class="hm-sec-title">3. 토지 정보 조회</div>
+        <div class="hm-row">
+          <div class="hm-icon">👆</div>
+          <div class="hm-text"><strong>지도에서 원하는 필지를 클릭</strong>하면 해당 토지의 상세 정보가 우측 패널에 카드 형태로 추가됩니다.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">📋</div>
+          <div class="hm-text">수집된 각 카드에서 확인할 수 있는 정보:</div>
+        </div>
+        <table class="hm-table">
+          <tr><th>항목</th><th>설명</th></tr>
+          <tr><td>소재지 / 지번</td><td>행정동명과 지번 주소</td></tr>
+          <tr><td>지목</td><td>토지의 이용 목적 분류 (전, 답, 대, 임야 등)</td></tr>
+          <tr><td>면적</td><td>필지 면적 (㎡)</td></tr>
+          <tr><td>공시지가</td><td>단위면적(㎡)당 공시지가 (원)</td></tr>
+          <tr><td>용도지역</td><td>국토계획법상 용도지역</td></tr>
+          <tr><td>지구단위계획구역</td><td>지구단위계획 구역 여부 및 명칭</td></tr>
+          <tr><td>소유구분</td><td>국유지 / 공유지 / 사유지 등</td></tr>
+        </table>
+        <div class="hm-row" style="margin-top:10px;">
+          <div class="hm-icon">🔴</div>
+          <div class="hm-text">클릭한 필지는 지도 위에 <strong>빨간색 하이라이트</strong>로 표시됩니다.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">🗑</div>
+          <div class="hm-text">카드 우측 상단의 <strong>삭제 버튼</strong>으로 개별 필지를 목록에서 제거할 수 있습니다.</div>
+        </div>
+      </div>
+
+      <hr class="hm-divider"/>
+
+      <!-- 4. 주제도 -->
+      <div class="hm-sec">
+        <div class="hm-sec-title">4. 주제도 (레이어) 활용</div>
+        <div class="hm-row">
+          <div class="hm-icon">📋</div>
+          <div class="hm-text"><strong>국토계획 주제도</strong> 패널을 펼치면 아래 레이어를 지도에 겹쳐 표시할 수 있습니다.</div>
+        </div>
+        <table class="hm-table">
+          <tr><th>레이어</th><th>설명</th></tr>
+          <tr><td>연속지적도</td><td>필지 경계를 색상별로 구분한 지적 레이어</td></tr>
+          <tr><td>도시지역 (용도지역)</td><td>주거·상업·공업·녹지 등 용도지역 색상 구분</td></tr>
+          <tr><td>지구단위계획구역</td><td>지구단위계획이 수립된 구역 표시</td></tr>
+        </table>
+        <div class="hm-row" style="margin-top:10px;">
+          <div class="hm-icon">🌿</div>
+          <div class="hm-text"><strong>국토환경성평가 주제도</strong>는 토지의 환경 보전 등급을 표시합니다.</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px 34px;">
+          <span class="hm-badge" style="background:#006633;">1등급 (보전 최우선)</span>
+          <span class="hm-badge" style="background:#339966;">2등급</span>
+          <span class="hm-badge" style="background:#BBAA00;">3등급</span>
+          <span class="hm-badge" style="background:#CC6600;">4등급</span>
+          <span class="hm-badge" style="background:#CC3300;">5등급 (개발 가능)</span>
+        </div>
+        <div class="hm-tip">💡 체크박스로 각 레이어를 켜고 끌 수 있으며, 드래그로 레이어 순서를 변경할 수 있습니다.</div>
+      </div>
+
+      <hr class="hm-divider"/>
+
+      <!-- 5. 데이터 수집 및 내보내기 -->
+      <div class="hm-sec">
+        <div class="hm-sec-title">5. 데이터 수집 및 내보내기</div>
+        <div class="hm-row">
+          <div class="hm-icon">📐</div>
+          <div class="hm-text">여러 필지를 클릭해 수집하면 <strong>필지 수 및 면적 합계</strong>가 자동으로 계산됩니다.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">💰</div>
+          <div class="hm-text"><strong>공시지가 총액</strong>을 원 / 천원 / 백만원 / 억원 단위로 전환하여 확인할 수 있습니다.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">🔃</div>
+          <div class="hm-text">목록 정렬: <strong>최신순</strong> · <strong>지번 오름차순(▲)</strong> · <strong>지번 내림차순(▼)</strong></div>
+        </div>
+        <table class="hm-table" style="margin-top:8px;">
+          <tr><th>버튼</th><th>기능</th></tr>
+          <tr><td>💾 토지조서 내보내기</td><td>수집된 필지 정보를 <strong>CSV 파일</strong>로 저장 (엑셀 호환)</td></tr>
+          <tr><td>📋 토지목록보기</td><td>수집 목록을 <strong>별도 창</strong>에서 표 형태로 확인</td></tr>
+          <tr><td>🗑 전체 삭제</td><td>수집된 모든 필지 정보 및 하이라이트 초기화</td></tr>
+        </table>
+      </div>
+
+      <hr class="hm-divider"/>
+
+      <!-- 6. 모바일 사용법 -->
+      <div class="hm-sec">
+        <div class="hm-sec-title">6. 모바일 사용법</div>
+        <div class="hm-row">
+          <div class="hm-icon">📱</div>
+          <div class="hm-text">모바일에서는 화면 상단 <strong>55%가 지도</strong>, 하단 <strong>45%가 정보 패널</strong>로 분리됩니다.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">☰</div>
+          <div class="hm-text">하단 패널 상단의 <strong>핸들 바를 탭</strong>하면 패널을 접거나 펼칠 수 있습니다.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">↔</div>
+          <div class="hm-text">모바일에서는 수집된 토지 목록이 <strong>가로 스크롤 테이블</strong> 형태로 표시됩니다.</div>
+        </div>
+        <div class="hm-tip">💡 모바일에서 지도를 조작할 때 패널이 방해된다면 핸들을 탭하여 패널을 접어두세요.</div>
+      </div>
+
+      <hr class="hm-divider"/>
+
+      <!-- 7. 자주 묻는 질문 -->
+      <div class="hm-sec">
+        <div class="hm-sec-title">7. 자주 묻는 질문 (FAQ)</div>
+        <div class="hm-row">
+          <div class="hm-icon">❓</div>
+          <div class="hm-text"><strong>지도를 클릭해도 정보가 안 나와요.</strong><br>지도를 충분히 확대하여 지적선이 보이는 상태에서 필지 위를 정확히 클릭해 주세요.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">❓</div>
+          <div class="hm-text"><strong>같은 필지를 두 번 클릭하면?</strong><br>"이미 추가된 필지입니다" 메시지가 표시되며 중복 추가되지 않습니다.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">❓</div>
+          <div class="hm-text"><strong>주소 검색이 안 될 때는?</strong><br>도로명 주소 또는 지번 주소로 검색해 보세요. 너무 광범위한 검색어보다 구체적인 주소가 정확합니다.</div>
+        </div>
+        <div class="hm-row">
+          <div class="hm-icon">❓</div>
+          <div class="hm-text"><strong>주제도 레이어가 보이지 않아요.</strong><br>체크박스를 체크한 뒤 지도를 적절히 확대하면 레이어가 표시됩니다. 일부 레이어는 특정 줌 레벨 이상에서만 보입니다.</div>
+        </div>
+      </div>
+
+    </div><!-- /.help-modal-body -->
+  </div><!-- /.help-modal-box -->
+</div><!-- /#helpModal -->
 
 <script>
 /* ===================================================
@@ -2130,6 +2351,12 @@ function debounce(fn, wait) {
     t = setTimeout(function(){ fn.apply(ctx,a); }, wait);
   };
 }
+
+/* ── 도움말 모달 ── */
+window.openHelp = function() { document.getElementById('helpModal').classList.add('open'); document.body.style.overflow='hidden'; };
+window.closeHelp = function() { document.getElementById('helpModal').classList.remove('open'); document.body.style.overflow=''; };
+window.closeHelpOutside = function(e) { if (e.target.id === 'helpModal') window.closeHelp(); };
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') window.closeHelp(); });
 </script>
 </body>
 </html>

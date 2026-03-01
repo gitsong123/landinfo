@@ -369,7 +369,14 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
         <span class="area-sum-val" id="areaSumVal">0 ㎡</span>
       </div>
       <div id="jigaSumRow" style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(26,95,168,0.2); padding-top:4px; margin-top:2px;">
-        <span class="area-sum-label">💰 공시지가 총액</span>
+        <span class="area-sum-label">💰 공시지가 총액
+          <select id="jigaUnitSel" onchange="changeJigaUnit(this.value)" style="margin-left:5px;border:1px solid #b8d6ee;border-radius:4px;background:#eaf3fb;color:#1a5fa8;font-size:10px;font-weight:700;padding:1px 3px;cursor:pointer;outline:none;">
+            <option value="원">원</option>
+            <option value="천원">천원</option>
+            <option value="백만원">백만원</option>
+            <option value="억원">억원</option>
+          </select>
+        </span>
         <span class="area-sum-val" id="jigaSumVal" style="color:#e67e22;">0 원</span>
       </div>
     </div>
@@ -427,6 +434,7 @@ var cache = {};
 var highlightLayer = null;
 var highlight3dEntities = {};
 var selectedFeatures = {};
+var jigaUnit = '원'; // 공시지가 표시 단위: '원' | '천원' | '백만원' | '억원'
 
 /* HTML 특수문자 이스케이프 (XSS 방지) */
 function escHtml(s) {
@@ -442,6 +450,33 @@ function escHtml(s) {
 function escAttr(s) {
   if (s === null || s === undefined) return '';
   return String(s).replace(/[^a-zA-Z0-9\-_]/g, '');
+}
+
+/* 공시지가 금액을 현재 단위로 포맷 (소수점 2자리) */
+function formatJiga(rawAmount) {
+  if (!rawAmount || rawAmount <= 0) return '-';
+  if (jigaUnit === '억원')  return (rawAmount / 100000000).toFixed(2) + ' 억원';
+  if (jigaUnit === '백만원') return (rawAmount / 1000000).toFixed(2) + ' 백만원';
+  if (jigaUnit === '천원')  return (rawAmount / 1000).toFixed(2) + ' 천원';
+  return Math.round(rawAmount).toLocaleString('ko-KR') + ' 원';
+}
+
+/* 단위 변경 시 화면 전체 갱신 */
+function changeJigaUnit(unit) {
+  jigaUnit = unit;
+  // 요약 바 총액 갱신
+  var totalJiga = 0;
+  collectedLandInfo.forEach(function(d) {
+    var a = parseFloat(d.area_ || d.parea || 0);
+    var j = parseFloat(String(d.jiga || '0').replace(/,/g, ''));
+    if (!isNaN(a) && !isNaN(j) && j > 0) totalJiga += (a * j);
+  });
+  if (totalJiga > 0) $("#jigaSumVal").text(formatJiga(Math.round(totalJiga)));
+  // 각 카드 토지 공시지가 총액 갱신
+  $('.jiga-total-val').each(function() {
+    var raw = parseFloat($(this).data('jiga-raw'));
+    $(this).text(raw > 0 ? formatJiga(raw) : '-');
+  });
 }
 
 /* (산지구분 코드 제거됨) */
@@ -1259,7 +1294,7 @@ function addLandInfo(d) {
   var _jigoNum = parseFloat(String(d.jiga || '').replace(/,/g, ''));
   var _areaNum = parseFloat(rawArea || 0);
   var _jigaTotal = (!isNaN(_jigoNum) && _jigoNum > 0 && !isNaN(_areaNum) && _areaNum > 0) ? Math.round(_areaNum * _jigoNum) : null;
-  $kv.append('<div class="land-kv-row"><span class="land-kv-k">토지 공시지가 총액</span><span class="land-kv-v" style="color:#e67e22;font-weight:800;">' + escHtml(_jigaTotal ? _jigaTotal.toLocaleString('ko-KR') + ' 원' : '-') + '</span></div>');
+  $kv.append('<div class="land-kv-row"><span class="land-kv-k">토지 공시지가 총액</span><span class="land-kv-v jiga-total-val" data-jiga-raw="' + (_jigaTotal || 0) + '" style="color:#e67e22;font-weight:800;">' + (_jigaTotal ? formatJiga(_jigaTotal) : '-') + '</span></div>');
   $kv.append('<div class="land-kv-sec">🏗 용도계획</div>');
   $kv.append(kv('용도지역', d.uname));
   $kv.append(kv('지구단위계획', d.dgm_nm));
@@ -1474,7 +1509,7 @@ function updateCnt() {
     
     // 공시지가 총액 표시
     if (totalJigaSum > 0) {
-      $("#jigaSumVal").text(Math.round(totalJigaSum).toLocaleString('ko-KR') + ' 원');
+      $("#jigaSumVal").text(formatJiga(Math.round(totalJigaSum)));
       $("#jigaSumRow").show();
     } else {
       $("#jigaSumVal").text('0 원');

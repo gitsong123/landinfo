@@ -1452,12 +1452,35 @@ function searchAddress() {
   var q = $("#addrInput").val().trim();
   if (!q) { showMsg("검색어를 입력하세요.", "err"); return; }
   closeAddrResults();
+  
+  // "산" 뒤에 숫자가 바로 붙어있는 경우 공백 추가 (인식률 개선)
+  var qNormalized = q.replace(/산(\d+)/g, "산 $1");
+  
   showMsg("🔍 주소를 검색 중입니다...");
+
+  // "산"이 포함된 경우 지번(parcel) 검색을 우선 시도
+  if (qNormalized.indexOf("산") > -1) {
+    doSearch(qNormalized, "parcel", function(found) {
+      if (!found) doSearch(qNormalized, "road");
+    });
+  } else {
+    // 일반 검색은 도로명(road) 우선
+    doSearch(qNormalized, "road", function(found) {
+      if (!found) doSearch(qNormalized, "parcel");
+    });
+  }
+}
+
+function doSearch(q, category, callback) {
   $.ajax({
-    type:"get", url:"https://api.vworld.kr/req/search",
-    data:{ service:"search", version:"2.0", request:"search", key:apiKey,
-           format:"json", size:8, page:1, query:q, type:"address", category:"road", crs:"EPSG:4326" },
-    dataType:"jsonp",
+    type: "get",
+    url: "https://api.vworld.kr/req/search",
+    data: {
+      service: "search", version: "2.0", request: "search", key: apiKey,
+      format: "json", size: 8, page: 1, query: q, type: "address",
+      category: category, crs: "EPSG:4326"
+    },
+    dataType: "jsonp",
     success: function(data) {
       var items = (data.response.status === "OK") ? (data.response.result.items || []) : [];
       if (items.length > 0) {
@@ -1466,32 +1489,22 @@ function searchAddress() {
         } else {
           showAddrResults(items);
         }
+        if (callback) callback(true);
       } else {
-        searchParcel(q);
+        if (callback) callback(false);
+        else if (category === "parcel") showMsg("주소를 찾을 수 없습니다: " + q, "err");
       }
     },
-    error: function(){ searchParcel(q); }
+    error: function() {
+      if (callback) callback(false);
+      else showMsg("주소 검색 오류가 발생했습니다.", "err");
+    }
   });
 }
 
 function searchParcel(q) {
-  $.ajax({
-    type:"get", url:"https://api.vworld.kr/req/search",
-    data:{ service:"search", version:"2.0", request:"search", key:apiKey,
-           format:"json", size:8, page:1, query:q, type:"address", category:"parcel", crs:"EPSG:4326" },
-    dataType:"jsonp",
-    success: function(data) {
-      var items = (data.response.status === "OK") ? (data.response.result.items || []) : [];
-      if (items.length > 0) {
-        if (items.length === 1) {
-          selectAddrResult(parseFloat(items[0].point.x), parseFloat(items[0].point.y), items[0].title || items[0].address || q);
-        } else {
-          showAddrResults(items);
-        }
-      } else { showMsg("주소를 찾을 수 없습니다: " + q, "err"); }
-    },
-    error: function(){ showMsg("주소 검색 오류가 발생했습니다.", "err"); }
-  });
+  // 이전 호환성 유지용 (doSearch로 통합됨)
+  doSearch(q, "parcel");
 }
 
 function moveTo(lon, lat) {

@@ -1271,6 +1271,11 @@ function handleMap3dClick(wp, ep, carto) {
 /* ===================================================
    토지 정보 조회 (WFS 단일 요청 - 규제 및 시설 레이어 통합)
 =================================================== */
+// VWorld WFS는 JSONP 콜백으로 parseResponse를 사용함 (필수)
+window.parseResponse = function(data) {
+  // $.ajax의 success 핸들러에서 처리하도록 넘겨줌
+};
+
 function fetchLandInfo(lon, lat) {
   if (!isLandParcelActive) return;
 
@@ -1278,7 +1283,7 @@ function fetchLandInfo(lon, lat) {
   var bbox = (lon-buf[0])+","+(lat-buf[1])+","+(lon+buf[0])+","+(lat+buf[1]);
   var ck = "land_" + lon.toFixed(7) + "_" + lat.toFixed(7);
 
-  if (cache[ck]) { processLandData(cache[ck], lon, lat); showMsg("캐시에서 불러왔습니다."); return; }
+  if (cache[ck]) { processLandData(cache[ck], lon, lat); return; }
 
   showMsg("🔍 토지 정보 조회 중...");
 
@@ -1291,7 +1296,7 @@ function fetchLandInfo(lon, lat) {
       SERVICE: "WFS", version: "1.1.0", request: "GetFeature",
       TYPENAME: [
         "lt_c_landinfobasemap",   // 기본 지적정보
-        "lt_c_uq111","lt_c_uq112","lt_c_uq113", // 용도지역
+        "lt_c_uq111",             // 용도지역(도시)
         "lt_c_upisuq161",         // 지구단위계획구역
         "lp_pa_cbnd_bubun",       // 공시지가
         "lt_c_uq114",             // 기타규제지역지구
@@ -1317,17 +1322,23 @@ function fetchLandInfo(lon, lat) {
   });
 }
 
-/* ... (하이라이트 및 유틸리티 함수들 유지) ... */
-
 /* ===================================================
    응답 처리 (정밀 PIP + 규제 정확도 개선)
 =================================================== */
 function processLandData(data, lon, lat) {
-  var baseFeats = (data.features||[]).filter(function(f){
+  var feats = data.features || [];
+  var baseFeats = feats.filter(function(f){
     return f.id && f.id.toLowerCase().indexOf("lt_c_landinfobasemap") >= 0;
   });
+  
+  if (baseFeats.length === 0) { 
+    // basemap이 없으면 공시지가 레이어에서라도 시도
+    baseFeats = feats.filter(function(f){ return f.id && f.id.toLowerCase().indexOf("lp_pa_cbnd_bubun") >= 0; });
+  }
+  
   if (baseFeats.length === 0) { showMsg("해당 위치에 지적 정보가 없습니다.", "err"); return; }
 
+  // 정밀 PIP (Point In Polygon) 처리
   var inside = baseFeats.filter(function(f){ return pointInGeom(lon, lat, f.geometry); });
   var best = null;
   if (inside.length > 0) {
@@ -1342,86 +1353,60 @@ function processLandData(data, lon, lat) {
   }
   if (!best) { showMsg("필지를 찾을 수 없습니다.", "err"); return; }
 
-  var parcelCenter = getCenter(best.geometry);
-  if (currentMapType === "2d") {
-    try {
-      var mercCoord = ol.proj.fromLonLat([parcelCenter[0], parcelCenter[1]]);
-      map2d.getView().animate({ center: mercCoord, duration: 400 });
-    } catch(e){}
-  } else {
-    try {
-      var curPos = map3d.getCurrentPosition();
-      var curAlt = (curPos && curPos.position && curPos.position.z) ? curPos.position.z : 800;
-      map3d.moveTo(new vw.CameraPosition(new vw.CoordZ(parcelCenter[0], parcelCenter[1], Math.max(curAlt, 400)), new vw.Direction(0, -90, 0)));
-    } catch(e){}
-  }
-
   var d = Object.assign({}, best.properties);
+  var pnu = d.pnu;
 
-  // 용도지역
-  var uqTypes = ["lt_c_uq111","lt_c_uq112","lt_c_uq113"];
-  var uqFeature = null;
-  for (var i = 0; i < uqTypes.length && !uqFeature; i++) {
-    var uqCands = (data.features||[]).filter(function(f){ return f.id && f.id.toLowerCase().indexOf(uqTypes[i]) >= 0; });
-    uqFeature = uqCands.find(function(f){ return f.geometry && pointInGeom(lon, lat, f.geometry); }) || (uqCands.length > 0 ? uqCands[0] : null);
+  // 이미 선택된 경우 해제 로직
+  if (collectedLandInfo.some(function(x){ return x.pnu === pnu; })) {
+    removeLand(pnu);
+    showMsg("🔲 선택이 해제되었습니다.");
+    return;
   }
-  d.uname = uqFeature ? (uqFeature.properties.uname || '-') : '-';
 
-  // 기타규제 및 특수구역 (114, 162, 164)
+  // 규제 및 시설 정보 추출
   var regList = [];
-  data.features.forEach(function(f) {
-    if (f.id.includes("lt_c_uq114") || f.id.includes("lt_c_uq162") || f.id.includes("lt_c_uq164")) {
-      var name = f.properties.uname || f.properties.name || f.properties.grad_nm;
-      if (name && !regList.includes(name)) regList.push(name);
-    }
-  });
-  d.reg = regList.length > 0 ? regList.join(", ") : "-";
-
-  // 도시계획시설 (121)
   var facList = [];
-  data.features.forEach(function(f) {
-    if (f.id.includes("lt_c_uq121")) {
-      var name = f.properties.uname || f.properties.fac_nm;
-      if (name && !facList.includes(name)) facList.push(name);
+  feats.forEach(function(f) {
+    // 해당 필지 영역 내에 있는 정보만 추출 (또는 PNU 매칭)
+    if (f.geometry && pointInGeom(lon, lat, f.geometry)) {
+      var props = f.properties;
+      var name = props.uname || props.name || props.fac_nm || props.dgm_nm || props.grad_nm;
+      
+      if (f.id.includes("uq114") || f.id.includes("uq162") || f.id.includes("uq164")) {
+        if (name && !regList.includes(name)) regList.push(name);
+      } else if (f.id.includes("uq121")) {
+        if (name && !facList.includes(name)) facList.push(name);
+      } else if (f.id.includes("uq111")) {
+        d.uname = name;
+      } else if (f.id.includes("upisuq161")) {
+        d.dgm_nm = name;
+      } else if (f.id.includes("lp_pa_cbnd_bubun")) {
+        if (props.jiga) d.jiga = props.jiga;
+      }
     }
   });
+
+  d.reg = regList.length > 0 ? regList.join(", ") : "-";
   d.facilities = facList.length > 0 ? facList.join(", ") : "-";
 
-  // 지구단위계획구역
-  var upCands = (data.features||[]).filter(function(f){ return f.id && f.id.toLowerCase().indexOf("lt_c_upisuq161") >= 0; });
-  var upF = upCands.find(function(f){ return f.geometry && pointInGeom(lon, lat, f.geometry); }) || null;
-  d.dgm_nm = upF ? (upF.properties.dgm_nm || '-') : '-';
-
-  // 공시지가
-  var lpCands = (data.features||[]).filter(function(f){ return f.id && f.id.toLowerCase().indexOf("lp_pa_cbnd_bubun") >= 0; });
-  var lpF = lpCands.find(function(f){ return f.geometry && pointInGeom(lon, lat, f.geometry); }) || lpCands[0] || null;
-  d.jiga = lpF ? (lpF.properties.jiga || '-') : '-';
-
-  var alreadySelected = collectedLandInfo.some(function(x){ return x.pnu === d.pnu; });
-  if (alreadySelected) {
-    removeHighlight2d(d.pnu);
-    removeHighlight3d(d.pnu);
-    collectedLandInfo = collectedLandInfo.filter(function(x){ return x.pnu !== d.pnu; });
-    removeMarker(d.pnu);
-    $('.land-item[data-pnu="' + d.pnu + '"]').remove();
-    $('#mobLandTbody tr[data-pnu="' + d.pnu + '"]').remove();
-    $('#mobLandTbody tr').each(function(i){ $(this).find('td:first').text(i+1); });
-    if ($('#mobLandTbody tr').length === 0) $('#mobLandTableWrap').removeClass('active');
-    updateCnt();
-    if (collectedLandInfo.length === 0) showEmptyState();
-    showMsg("🔲 필지 선택이 해제되었습니다.", "");
+  // 지도 이동 및 하이라이트
+  var parcelCenter = getCenter(best.geometry);
+  if (currentMapType === "2d") {
+    addHighlight2d(best.geometry, pnu);
+    map2d.getView().animate({ center: ol.proj.fromLonLat([parcelCenter[0], parcelCenter[1]]), duration: 400 });
   } else {
-    if (currentMapType === "2d") addHighlight2d(best.geometry, d.pnu);
-    else addHighlight3d(best.geometry, d.pnu);
-    d.ecvam_gr = '-'; d.bio_gr = '-';
-    d._lon = parcelCenter[0]; d._lat = parcelCenter[1]; d._geometry = best.geometry;
-    addLandInfo(d);
-    addMarker(lon, lat, d);
-    autoOpenMobileSheet();
-    showMsg("✅ 토지 정보가 추가되었습니다.", "ok");
-    fetchEcvamGrade(lon, lat, function(ecvamResult) { updateEcvamGradeOnCard(d.pnu, ecvamResult); });
+    addHighlight3d(best.geometry, pnu);
   }
+
+  d._lon = parcelCenter[0]; d._lat = parcelCenter[1]; d._geometry = best.geometry;
+  addLandInfo(d);
+  addMarker(parcelCenter[0], parcelCenter[1], d);
+  autoOpenMobileSheet();
+  showMsg("✅ 정보가 추가되었습니다.", "ok");
+  
+  fetchEcvamGrade(lon, lat, function(res) { updateEcvamGradeOnCard(pnu, res); });
 }
+
 
 /* ===================================================
    토지 카드 추가 (UI 표시 핵심 부분)

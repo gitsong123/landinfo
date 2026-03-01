@@ -446,7 +446,7 @@ var selectedFeatures = {};
 var jigaUnit = '원'; // 공시지가 표시 단위: '원' | '천원' | '백만원' | '억원'
 var hoverTimer = null;
 var hoverCache = {};
-var CADASTRAL_MIN_ZOOM = 15; // 지적도 가시 최소 줌 레벨
+var CADASTRAL_MIN_ZOOM = 17; // 지적도 가시 최소 줌 레벨 (VWorld LP_PA_CBND_BUBUN 기준)
 
 /* HTML 특수문자 이스케이프 (XSS 방지) */
 function escHtml(s) {
@@ -553,7 +553,7 @@ $(document).ready(function() {
         var lat = pos.coords.latitude;
         try {
           map2d.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
-          map2d.getView().setZoom(17);
+          map2d.getView().setZoom(18);
           try {
             map3d.moveTo(new vw.CameraPosition(
               new vw.CoordZ(lon, lat, 500),
@@ -596,7 +596,7 @@ function init2dMap() {
   };
   map2d = new vw.ol3.Map("ol3map", vw.ol3.MapOptions);
   map2d.getView().setCenter(ol.proj.fromLonLat([127.23601, 37.38138]));
-  map2d.getView().setZoom(17);
+  map2d.getView().setZoom(18);
 
   highlightLayer = new ol.layer.Vector({
     source: new ol.source.Vector(),
@@ -697,7 +697,7 @@ function changeMapType() {
     if (isLandParcelActive) { isLandParcelActive = false; toggle2dLayer(true); }
 
     if (lon3d && lat3d) {
-      var zoom2dNew = z3d ? Math.max(14, Math.min(20, Math.round(20 - Math.log2(z3d / 150)))) : 18;
+      var zoom2dNew = z3d ? Math.max(CADASTRAL_MIN_ZOOM, Math.min(20, Math.round(20 - Math.log2(z3d / 150)))) : 18;
       try {
         map2d.getView().setCenter(ol.proj.fromLonLat([lon3d, lat3d]));
         map2d.getView().setZoom(zoom2dNew);

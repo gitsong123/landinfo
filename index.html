@@ -1785,11 +1785,14 @@ function openTableWindow() {
 function exportToCSV() {
   if (!collectedLandInfo.length) { showMsg("내보낼 데이터가 없습니다.", "err"); return; }
   var fmt = function(v){ return (v && !isNaN(v)) ? Number(v).toLocaleString() : (v||''); };
-  var csv = "\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),용도지역,지구단위계획구역,국토환경성평가등급,생태자연도등급\n";
-  var totalArea = 0;
+  var csv = "\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),공시지가 소계(원),용도지역,지구단위계획구역,국토환경성평가등급,생태자연도등급\n";
+  var totalArea = 0, totalJigaCSV = 0;
   collectedLandInfo.forEach(function(d, idx) {
     var area = parseFloat(d.area_ || d.parea || 0);
     if (!isNaN(area)) totalArea += area;
+    var jigaNum = parseFloat(String(d.jiga || '').replace(/,/g, ''));
+    var jigaSub = (!isNaN(area) && area > 0 && !isNaN(jigaNum) && jigaNum > 0) ? Math.round(area * jigaNum) : 0;
+    if (jigaSub > 0) totalJigaCSV += jigaSub;
     csv += [
       idx + 1,
       '="' + (d.pnu||'') + '"',
@@ -1797,12 +1800,13 @@ function exportToCSV() {
       d.jibun||'', d.jimok||'',
       fmt(d.area_||d.parea),
       fmt(d.jiga),
+      jigaSub > 0 ? jigaSub.toLocaleString() : '',
       d.uname||'', d.dgm_nm||'',
       d.ecvam_gr||'', d.bio_gr||''
     ].map(function(f){ return '"' + String(f).replace(/"/g,'""') + '"'; }).join(',') + '\n';
   });
-  // 면적 합계 행 (14컬럼)
-  csv += '"합계","","","","","","","","' + Math.round(totalArea).toLocaleString() + '","","","","",""\n';
+  // 합계 행 (15컬럼)
+  csv += '"합계","","","","","","","","' + Math.round(totalArea).toLocaleString() + '","","' + (totalJigaCSV > 0 ? totalJigaCSV.toLocaleString() : '') + '","","","",""\n';
   var blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');

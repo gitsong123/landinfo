@@ -132,6 +132,10 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 /* 지도 마우스 오버 툴팁 */
 #mapTooltip{position:absolute;z-index:1000;background:rgba(15,20,40,0.82);color:#fff;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);display:none;max-width:260px;letter-spacing:.2px;}
 
+/* 지적도 줌 경고 배너 */
+#zoomWarn{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:998;background:rgba(211,84,0,0.91);color:#fff;padding:7px 20px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.28);display:none;pointer-events:none;letter-spacing:.3px;}
+@media(max-width:768px){#zoomWarn{bottom:8px;font-size:11px;padding:6px 14px;}}
+
 /* 빈 상태 */
 .empty-state{text-align:center;padding:40px 20px;color:#aab;}
 .empty-state .ico{font-size:36px;margin-bottom:10px;}
@@ -276,6 +280,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     <div id="vmap" style="display:none;"></div>
     <div id="ol3map"></div>
     <div id="mapTooltip"></div>
+    <div id="zoomWarn">🔍 확대해야 지적선이 보입니다</div>
     <div class="map-ctrl">
       <select id="mapTypeSel" onchange="changeMapType()">
         <option value="2d" selected>🗺 2D 일반지도</option>
@@ -441,6 +446,7 @@ var selectedFeatures = {};
 var jigaUnit = '원'; // 공시지가 표시 단위: '원' | '천원' | '백만원' | '억원'
 var hoverTimer = null;
 var hoverCache = {};
+var CADASTRAL_MIN_ZOOM = 15; // 지적도 가시 최소 줌 레벨
 
 /* HTML 특수문자 이스케이프 (XSS 방지) */
 function escHtml(s) {
@@ -590,7 +596,7 @@ function init2dMap() {
   };
   map2d = new vw.ol3.Map("ol3map", vw.ol3.MapOptions);
   map2d.getView().setCenter(ol.proj.fromLonLat([127.23601, 37.38138]));
-  map2d.getView().setZoom(18);
+  map2d.getView().setZoom(17);
 
   highlightLayer = new ol.layer.Vector({
     source: new ol.source.Vector(),
@@ -604,6 +610,20 @@ function init2dMap() {
   markerLayer = new vw.ol3.layer.Marker(map2d, { showTitle:true });
   map2d.addLayer(markerLayer);
   map2d.on('singleclick', debounce(handleMap2dClick, 250));
+  map2d.on('moveend', checkCadastralZoom);
+}
+
+/* 지적도 가시 줌 체크 → 경고 배너 표시/숨김 */
+function checkCadastralZoom() {
+  if (currentMapType !== '2d' || !isLandParcelActive) {
+    $('#zoomWarn').hide();
+    return;
+  }
+  try {
+    var z = map2d.getView().getZoom();
+    if (z < CADASTRAL_MIN_ZOOM) $('#zoomWarn').show();
+    else $('#zoomWarn').hide();
+  } catch(e) {}
 }
 
 /* ===================================================
@@ -684,6 +704,7 @@ function changeMapType() {
       } catch(e){}
     }
     try{ map2d.updateSize(); }catch(e){}
+    checkCadastralZoom();
   }
 }
 
@@ -713,12 +734,14 @@ function toggle2dLayer(enable) {
       map2d.addLayer(landLayer2d);
       isLandParcelActive = true;
       showMsg("2D 지적도가 활성화되었습니다.", "ok");
+      checkCadastralZoom();
     } catch(e){ showMsg("지적도 활성화 오류: " + e.message, "err"); }
   } else if (!enable && isLandParcelActive) {
     try {
       if (landLayer2d) { landLayer2d.setVisible(false); map2d.removeLayer(landLayer2d); landLayer2d = null; }
       isLandParcelActive = false;
       showMsg("지적도가 비활성화되었습니다.");
+      $('#zoomWarn').hide();
     } catch(e){}
   }
 }

@@ -129,6 +129,9 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 /* footer */
 .footer{padding:8px 12px;font-size:10px;color:#aaa;border-top:1px solid #e0e4f0;flex-shrink:0;}
 
+/* 지도 마우스 오버 툴팁 */
+#mapTooltip{position:absolute;z-index:1000;background:rgba(15,20,40,0.82);color:#fff;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);display:none;max-width:260px;letter-spacing:.2px;}
+
 /* 빈 상태 */
 .empty-state{text-align:center;padding:40px 20px;color:#aab;}
 .empty-state .ico{font-size:36px;margin-bottom:10px;}
@@ -272,6 +275,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   <div class="map-area">
     <div id="vmap" style="display:none;"></div>
     <div id="ol3map"></div>
+    <div id="mapTooltip"></div>
     <div class="map-ctrl">
       <select id="mapTypeSel" onchange="changeMapType()">
         <option value="2d" selected>🗺 2D 일반지도</option>
@@ -305,7 +309,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     <!-- 내보내기/지우기 -->
     <div class="btn-row">
       <button class="btn-export" onclick="exportToCSV()">💾 토지조서 내보내기</button>
-      <button class="btn-table-win" onclick="openTableWindow()">📋 목록 새창</button>
+      <button class="btn-table-win" onclick="openTableWindow()">📋 토지목록보기</button>
       <button class="btn-clear" onclick="clearLandInfo()">🗑 전체 삭제</button>
     </div>
 
@@ -435,6 +439,8 @@ var highlightLayer = null;
 var highlight3dEntities = {};
 var selectedFeatures = {};
 var jigaUnit = '원'; // 공시지가 표시 단위: '원' | '천원' | '백만원' | '억원'
+var hoverTimer = null;
+var hoverCache = {};
 
 /* HTML 특수문자 이스케이프 (XSS 방지) */
 function escHtml(s) {
@@ -555,6 +561,8 @@ $(document).ready(function() {
       { timeout: 8000, maximumAge: 60000 }
     );
   }
+
+  initHoverTooltip();
 
   function activateLandParcel() {
     $("#landChk").prop("checked", true);
@@ -1685,7 +1693,7 @@ function openTableWindow() {
     var area = parseFloat(d.area_ || d.parea || 0);
     var areaDisp = isNaN(area) ? '-' : Math.round(area).toLocaleString();
     var jigaNum = parseFloat(String(d.jiga || '').replace(/,/g,''));
-    var jigaTotalDisp = (!isNaN(area) && area > 0 && !isNaN(jigaNum) && jigaNum > 0) ? Math.round(area * jigaNum).toLocaleString('ko-KR') + ' 원' : '-';
+    var jigaRaw = (!isNaN(area) && area > 0 && !isNaN(jigaNum) && jigaNum > 0) ? Math.round(area * jigaNum) : 0;
     var safePnu = escAttr(d.pnu);
     return '<tr data-pnu="' + safePnu + '">' +
       '<td>' + (i + 1) + '</td>' +
@@ -1693,7 +1701,7 @@ function openTableWindow() {
       '<td>' + escHtml(d.jimok || '-') + '</td>' +
       '<td class="ar">' + areaDisp + '</td>' +
       '<td class="ar">' + escHtml(fmt(d.jiga)) + '</td>' +
-      '<td class="ar" style="color:#c0392b;font-weight:700;">' + jigaTotalDisp + '</td>' +
+      '<td class="ar jiga-cell" data-raw="' + jigaRaw + '" style="color:#c0392b;font-weight:700;">' + (jigaRaw > 0 ? jigaRaw.toLocaleString('ko-KR') + ' 원' : '-') + '</td>' +
       '<td>' + escHtml(d.uname || '-') + '</td>' +
       '<td>' + escHtml(d.dgm_nm || '-') + '</td>' +
       '<td><button class="btn-del" onclick="deleteRow(\'' + safePnu + '\',this)">삭제</button></td>' +
@@ -1743,7 +1751,16 @@ function openTableWindow() {
     '@media print{.btn-csv,.btn-del{display:none;} body{padding:8px;}}' +
     '</style></head><body>' +
     '<div class="header"><h2>토지 목록</h2>' +
-      '<button class="btn-csv" onclick="exportCSV()">토지조서 내보내기 (CSV)</button>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span style="font-size:12px;color:#555;font-weight:600;">금액단위:</span>' +
+        '<select onchange="changeUnit(this.value)" style="border:1px solid #b0bcd8;border-radius:5px;background:#eaf3fb;color:#1a5fa8;font-size:12px;font-weight:700;padding:3px 7px;cursor:pointer;outline:none;">' +
+          '<option value="원">원</option>' +
+          '<option value="천원">천원</option>' +
+          '<option value="백만원">백만원</option>' +
+          '<option value="억원">억원</option>' +
+        '</select>' +
+        '<button class="btn-csv" onclick="exportCSV()">토지조서 내보내기 (CSV)</button>' +
+      '</div>' +
     '</div>' +
     '<div class="summary">' +
       '<div class="sum-card"><div class="sum-label">총 필지 수</div><div class="sum-val" id="sumCnt">' + cnt + ' 필지</div></div>' +
@@ -1767,6 +1784,22 @@ function openTableWindow() {
     '<div class="foot">토지정보 조회 시스템 &nbsp;·&nbsp; ' + new Date().toLocaleDateString('ko-KR') + '</div>' +
     '<script>' +
     'var _data=' + dataJson + ';' +
+    'var wUnit="원";' +
+    'function fmtJiga(r){' +
+    '  if(!r||r<=0)return"-";' +
+    '  if(wUnit==="억원")return(r/100000000).toFixed(2)+" 억원";' +
+    '  if(wUnit==="백만원")return(r/1000000).toFixed(2)+" 백만원";' +
+    '  if(wUnit==="천원")return(r/1000).toFixed(2)+" 천원";' +
+    '  return Math.round(r).toLocaleString()+" 원";' +
+    '}' +
+    'function changeUnit(u){' +
+    '  wUnit=u;' +
+    '  document.querySelectorAll(".jiga-cell").forEach(function(el){' +
+    '    var raw=parseFloat(el.dataset.raw||0);' +
+    '    el.textContent=raw>0?fmtJiga(raw):"-";' +
+    '  });' +
+    '  updateSummary();' +
+    '}' +
     'function updateSummary(){' +
     '  var tot=0,jigaTot=0;' +
     '  _data.forEach(function(d){' +
@@ -1778,8 +1811,8 @@ function openTableWindow() {
     '  document.getElementById("sumArea").textContent=Math.round(tot).toLocaleString()+" ㎡";' +
     '  document.getElementById("sumPyeong").textContent="≈ "+Math.round(tot*0.3025).toLocaleString()+" 평";' +
     '  document.getElementById("footArea").textContent=Math.round(tot).toLocaleString();' +
-    '  var sj=document.getElementById("sumJiga");if(sj)sj.textContent=jigaTot.toLocaleString()+" 원";' +
-    '  var fj=document.getElementById("footJiga");if(fj)fj.textContent=jigaTot.toLocaleString()+" 원";' +
+    '  var sj=document.getElementById("sumJiga");if(sj)sj.textContent=fmtJiga(jigaTot);' +
+    '  var fj=document.getElementById("footJiga");if(fj)fj.textContent=fmtJiga(jigaTot);' +
     '}' +
     'function deleteRow(pnu,btn){' +
     '  if(window.opener&&!window.opener.closed){window.opener.deleteLandFromChild(pnu);}' +
@@ -1908,6 +1941,74 @@ function getCenter(geom) {
     coords.forEach(function(p){ sx+=p[0]; sy+=p[1]; });
     return [sx/coords.length, sy/coords.length];
   } catch(e){ return [0,0]; }
+}
+
+/* ===================================================
+   지도 마우스 오버 툴팁 (2D 전용)
+=================================================== */
+function initHoverTooltip() {
+  var $tip = $('#mapTooltip');
+
+  map2d.on('pointermove', function(evt) {
+    if (currentMapType !== '2d' || !isLandParcelActive) { $tip.hide(); return; }
+    var px = evt.pixel;
+    $tip.css({ left: (px[0] + 16) + 'px', top: (px[1] - 10) + 'px' });
+    var ll = ol.proj.toLonLat(evt.coordinate);
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(function() { fetchHoverInfo(ll[0], ll[1]); }, 320);
+  });
+
+  document.getElementById('ol3map').addEventListener('mouseleave', function() {
+    clearTimeout(hoverTimer);
+    $tip.hide();
+  });
+}
+
+function fetchHoverInfo(lon, lat) {
+  var hk = lon.toFixed(4) + '_' + lat.toFixed(4);
+  if (hoverCache[hk] !== undefined) {
+    if (hoverCache[hk]) showHoverTooltip(hoverCache[hk]);
+    else $('#mapTooltip').hide();
+    return;
+  }
+  var buf = 0.00012;
+  var bbox = (lon-buf)+','+(lat-buf)+','+(lon+buf)+','+(lat+buf);
+  $.ajax({
+    type: 'get',
+    url: 'https://api.vworld.kr/req/wfs',
+    data: {
+      key: apiKey,
+      domain: window.location.hostname || 'localhost',
+      SERVICE: 'WFS', version: '1.1.0', request: 'GetFeature',
+      TYPENAME: 'lt_c_landinfobasemap',
+      OUTPUT: 'text/javascript',
+      SRSNAME: 'EPSG:4326',
+      BBOX: bbox,
+      MAXFEATURES: 5
+    },
+    dataType: 'jsonp',
+    timeout: 3000,
+    success: function(data) {
+      var feats = (data && data.features) || [];
+      var best = feats.filter(function(f){ return f.geometry && pointInGeom(lon, lat, f.geometry); })[0]
+                 || feats[0] || null;
+      if (best) {
+        var p = best.properties;
+        var info = [p.emd_nm, p.ri_nm, p.jibun].filter(Boolean).join(' ')
+                   + (p.jimok ? '  [' + p.jimok + ']' : '');
+        hoverCache[hk] = info;
+        showHoverTooltip(info);
+      } else {
+        hoverCache[hk] = null;
+        $('#mapTooltip').hide();
+      }
+    },
+    error: function() { $('#mapTooltip').hide(); }
+  });
+}
+
+function showHoverTooltip(text) {
+  $('#mapTooltip').text(text).show();
 }
 
 function debounce(fn, wait) {

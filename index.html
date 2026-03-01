@@ -1640,11 +1640,10 @@ function showAddrResults(items) {
     var pt = item.point;
     if (!pt) return;
     var lon = parseFloat(pt.x), lat = parseFloat(pt.y);
-    var title = item.title || item.address || item.name || '';
     var address = (item.address && typeof item.address === 'object')
       ? (item.address.road || item.address.parcel || '')
       : (item.address || '');
-    var label = title || address;
+    var label = item.title || item.name || address;
     var $r = $('<div class="addr-result-item"></div>');
     $r.append('<span class="addr-result-name">' + label + '</span>');
     if (address && address !== label) {

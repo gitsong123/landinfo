@@ -1534,6 +1534,20 @@ function moveTo(lon, lat) {
 /* ===================================================
    토지 목록 새창 열기
 =================================================== */
+// 새창에서 삭제 버튼 클릭 시 부모창에서도 해당 필지 제거
+window.deleteLandFromChild = function(pnu) {
+  if (currentMapType === "2d") removeHighlight2d(pnu);
+  else removeHighlight3d(pnu);
+  collectedLandInfo = collectedLandInfo.filter(function(x){ return x.pnu !== pnu; });
+  removeMarker(pnu);
+  $('.land-item[data-pnu="' + pnu + '"]').remove();
+  $('#mobLandTbody tr[data-pnu="' + pnu + '"]').remove();
+  $('#mobLandTbody tr').each(function(i){ $(this).find('td:first').text(i + 1); });
+  if ($('#mobLandTbody tr').length === 0) $('#mobLandTableWrap').removeClass('active');
+  updateCnt();
+  if (collectedLandInfo.length === 0) showEmptyState();
+};
+
 function openTableWindow() {
   if (!collectedLandInfo.length) { showMsg("표시할 토지 정보가 없습니다.", "err"); return; }
 
@@ -1541,14 +1555,14 @@ function openTableWindow() {
   var totalArea = collectedLandInfo.reduce(function(s, d){
     return s + (parseFloat(d.area_ || d.parea || 0) || 0);
   }, 0);
-  var totalPyeong = (totalArea * 0.3025).toFixed(1);
   var cnt = collectedLandInfo.length;
 
   var rows = collectedLandInfo.map(function(d, i) {
     var addr = [d.sido_nm, d.sgg_nm, d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
     var area = parseFloat(d.area_ || d.parea || 0);
     var areaDisp = isNaN(area) ? '-' : Math.round(area).toLocaleString();
-    return '<tr>' +
+    var safePnu = (d.pnu||'').replace(/'/g, '');
+    return '<tr data-pnu="' + safePnu + '">' +
       '<td>' + (i + 1) + '</td>' +
       '<td class="al">' + addr + '</td>' +
       '<td>' + (d.jimok || '-') + '</td>' +
@@ -1556,10 +1570,10 @@ function openTableWindow() {
       '<td class="ar">' + fmt(d.jiga) + '</td>' +
       '<td>' + (d.uname || '-') + '</td>' +
       '<td>' + (d.dgm_nm || '-') + '</td>' +
+      '<td><button class="btn-del" onclick="deleteRow(\'' + safePnu + '\',this)">삭제</button></td>' +
     '</tr>';
   }).join('');
 
-  // 새창 내 CSV 내보내기용 데이터 직렬화
   var dataJson = JSON.stringify(collectedLandInfo.map(function(d){
     return {
       pnu: d.pnu||'', sido: d.sido_nm||'', sgg: d.sgg_nm||'',
@@ -1583,55 +1597,69 @@ function openTableWindow() {
     '.sum-label{font-size:11px;color:#777;margin-bottom:4px;}' +
     '.sum-val{font-size:20px;font-weight:700;color:#1a2a4a;}' +
     '.sum-sub{font-size:11px;color:#555;margin-top:3px;}' +
-    '.btn-csv{padding:7px 16px;background:#1a6fb5;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.3px;}' +
+    '.btn-csv{padding:7px 16px;background:#1a6fb5;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;}' +
     '.btn-csv:hover{background:#155a94;}' +
+    '.btn-del{padding:3px 10px;background:#c0392b;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;}' +
+    '.btn-del:hover{background:#a93226;}' +
     '.tbl-wrap{overflow-x:auto;border:1px solid #d0d5e0;border-radius:6px;background:#fff;}' +
     'table{width:100%;border-collapse:collapse;white-space:nowrap;}' +
     'thead th{background:#2c4a7a;color:#fff;padding:9px 11px;text-align:center;font-size:12px;font-weight:700;position:sticky;top:0;border-right:1px solid #3a5f9a;}' +
     'thead th:last-child{border-right:none;}' +
-    'tbody td{padding:7px 11px;border-bottom:1px solid #eaecf4;border-right:1px solid #eaecf4;font-size:12px;}' +
+    'tbody td{padding:7px 11px;border-bottom:1px solid #eaecf4;border-right:1px solid #eaecf4;font-size:12px;text-align:center;}' +
     'tbody td:last-child{border-right:none;}' +
     'tbody td.al{text-align:left;}' +
     'tbody td.ar{text-align:right;}' +
-    'tbody td{text-align:center;}' +
     'tbody tr:nth-child(even) td{background:#f5f7fc;}' +
     'tbody tr:hover td{background:#e8eef8;}' +
-    'tfoot td{padding:8px 11px;font-size:12px;font-weight:700;background:#edf1f9;border-top:2px solid #b0bcd8;border-right:1px solid #d0d5e0;}' +
+    'tfoot td{padding:8px 11px;font-size:12px;font-weight:700;background:#edf1f9;border-top:2px solid #b0bcd8;border-right:1px solid #d0d5e0;text-align:center;}' +
     'tfoot td:last-child{border-right:none;}' +
     '.foot{margin-top:10px;text-align:right;font-size:11px;color:#aaa;}' +
-    '@media print{.btn-csv{display:none;} .header button{display:none;} body{padding:8px;}}' +
+    '@media print{.btn-csv,.btn-del{display:none;} body{padding:8px;}}' +
     '</style></head><body>' +
-    '<div class="header">' +
-      '<h2>토지 목록</h2>' +
+    '<div class="header"><h2>토지 목록</h2>' +
       '<button class="btn-csv" onclick="exportCSV()">토지조서 내보내기 (CSV)</button>' +
     '</div>' +
     '<div class="summary">' +
-      '<div class="sum-card"><div class="sum-label">총 필지 수</div><div class="sum-val">' + cnt + ' 필지</div></div>' +
-      '<div class="sum-card"><div class="sum-label">면적 합계</div><div class="sum-val">' + Math.round(totalArea).toLocaleString() + ' ㎡</div><div class="sum-sub">≈ ' + Number(totalPyeong).toLocaleString() + ' 평</div></div>' +
+      '<div class="sum-card"><div class="sum-label">총 필지 수</div><div class="sum-val" id="sumCnt">' + cnt + ' 필지</div></div>' +
+      '<div class="sum-card"><div class="sum-label">면적 합계</div><div class="sum-val" id="sumArea">' + Math.round(totalArea).toLocaleString() + ' ㎡</div>' +
+        '<div class="sum-sub" id="sumPyeong">≈ ' + Math.round(totalArea * 0.3025).toLocaleString() + ' 평</div></div>' +
     '</div>' +
     '<div class="tbl-wrap"><table>' +
-    '<thead><tr>' +
-      '<th>순번</th><th>주소</th><th>지목</th><th>면적(㎡)</th>' +
-      '<th>공시지가(원/㎡)</th><th>용도지역</th><th>지구단위계획구역</th>' +
+    '<thead><tr><th>순번</th><th>주소</th><th>지목</th><th>면적(㎡)</th>' +
+      '<th>공시지가(원/㎡)</th><th>용도지역</th><th>지구단위계획구역</th><th>삭제</th>' +
     '</tr></thead>' +
-    '<tbody>' + rows + '</tbody>' +
+    '<tbody id="tbl-body">' + rows + '</tbody>' +
     '<tfoot><tr>' +
       '<td colspan="3" style="text-align:right;">합  계</td>' +
-      '<td style="text-align:right;">' + Math.round(totalArea).toLocaleString() + '</td>' +
-      '<td colspan="3"></td>' +
+      '<td id="footArea" style="text-align:right;">' + Math.round(totalArea).toLocaleString() + '</td>' +
+      '<td colspan="4"></td>' +
     '</tr></tfoot>' +
     '</table></div>' +
     '<div class="foot">토지정보 조회 시스템 &nbsp;·&nbsp; ' + new Date().toLocaleDateString('ko-KR') + '</div>' +
     '<script>' +
-    'var _data = ' + dataJson + ';' +
+    'var _data=' + dataJson + ';' +
+    'function updateSummary(){' +
+    '  var tot=0;' +
+    '  _data.forEach(function(d){var a=parseFloat(d.area||0);if(!isNaN(a))tot+=a;});' +
+    '  document.getElementById("sumCnt").textContent=_data.length+" 필지";' +
+    '  document.getElementById("sumArea").textContent=Math.round(tot).toLocaleString()+" ㎡";' +
+    '  document.getElementById("sumPyeong").textContent="≈ "+Math.round(tot*0.3025).toLocaleString()+" 평";' +
+    '  document.getElementById("footArea").textContent=Math.round(tot).toLocaleString();' +
+    '}' +
+    'function deleteRow(pnu,btn){' +
+    '  if(window.opener&&!window.opener.closed){window.opener.deleteLandFromChild(pnu);}' +
+    '  _data=_data.filter(function(d){return d.pnu!==pnu;});' +
+    '  var row=btn.closest("tr");row.parentNode.removeChild(row);' +
+    '  document.querySelectorAll("#tbl-body tr").forEach(function(r,i){r.cells[0].textContent=i+1;});' +
+    '  updateSummary();' +
+    '}' +
     'function exportCSV(){' +
     '  var fmt=function(v){return(v&&!isNaN(v))?Number(v).toLocaleString():(v||"");};' +
     '  var csv="\\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),용도지역,지구단위계획구역\\n";' +
     '  var tot=0;' +
     '  _data.forEach(function(d,i){' +
     '    var a=parseFloat(d.area||0);if(!isNaN(a))tot+=a;' +
-    '    csv+=[i+1,\'="\'+d.pnu+\'"\',d.sido,d.sgg,d.emd,d.ri,d.jibun,d.jimok,' +
-    '      fmt(d.area),fmt(d.jiga),d.uname,d.dgm_nm' +
+    '    csv+=[i+1,\'="\'+d.pnu+\'"\',d.sido,d.sgg,d.emd,d.ri,d.jibun,d.jimok,fmt(d.area),fmt(d.jiga),d.uname,d.dgm_nm' +
     '    ].map(function(f){return\'"\'+String(f).replace(/"/g,\'""\')+\'"\';}).join(",")+\"\\n\";' +
     '  });' +
     '  csv+=\'"\'+_data.length+\'필지 합계","","","","","","","","\'+Math.round(tot).toLocaleString()+\'","","",""\'+\"\\n\";' +
@@ -1643,7 +1671,7 @@ function openTableWindow() {
     '<\/script>' +
     '</body></html>';
 
-  var win = window.open('', '_blank', 'width=1000,height=680,scrollbars=yes,resizable=yes');
+  var win = window.open('', '_blank', 'width=1050,height=680,scrollbars=yes,resizable=yes');
   win.document.write(html);
   win.document.close();
 }

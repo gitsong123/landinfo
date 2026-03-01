@@ -221,17 +221,24 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   .land-list{
     padding:0 8px 8px;
     -webkit-overflow-scrolling:touch;
-    overflow-y:scroll;
     overscroll-behavior:contain;
     order:4;
-    flex:1;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* 사이드 패널 내부 스크롤 허용 */
+  .side{
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ── 모바일: 카드 숨기고 테이블만 표시 ── */
   .land-item{display:none!important;}
   .land-item-hd{display:none!important;}
   /* 모바일 테이블 (데이터 있을 때만 표시) */
-  .mob-land-tbl-wrap.active{display:block!important;position:relative;overflow-x:auto;margin:4px 0;border-radius:8px;background:#fff;box-shadow:0 1px 4px rgba(60,80,180,.07);}
+  .mob-land-tbl-wrap.active{display:block!important;position:relative;overflow-x:auto;margin:8px 0;border-radius:8px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.1);border:1px solid #dde3f5;}
   /* 오른쪽 스크롤 힌트 그라데이션 */
   .mob-land-tbl-wrap::after{content:'';pointer-events:none;position:absolute;top:0;right:0;bottom:0;width:36px;background:linear-gradient(to right,rgba(255,255,255,0),rgba(255,255,255,.95));border-radius:0 8px 8px 0;z-index:3;transition:opacity .3s;}
   .mob-land-tbl-wrap.scrolled::after{opacity:0;}

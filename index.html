@@ -1485,7 +1485,13 @@ function doSearch(q, category, callback) {
       var items = (data.response.status === "OK") ? (data.response.result.items || []) : [];
       if (items.length > 0) {
         if (items.length === 1) {
-          selectAddrResult(parseFloat(items[0].point.x), parseFloat(items[0].point.y), items[0].title || items[0].address || q);
+          var item = items[0];
+          var title = item.title || '';
+          var address = (item.address && typeof item.address === 'object')
+            ? (item.address.road || item.address.parcel || '')
+            : (item.address || '');
+          var label = title || address || q;
+          selectAddrResult(parseFloat(item.point.x), parseFloat(item.point.y), label);
         } else {
           showAddrResults(items);
         }

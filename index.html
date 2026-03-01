@@ -130,17 +130,18 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   /* 레이아웃 재설정 */
   .wrap{display:block;position:relative;}
 
-  /* 지도: 전체화면 고정 */
+  /* 지도: 상단 55vh 고정 (패널과 겹치지 않게) */
   .map-area{
     position:fixed;
-    top:0;left:0;right:0;bottom:0;
-    height:100dvh;
+    top:0;left:0;right:0;
+    height:55vh;
     z-index:1;
   }
 
-  /* 사이드: 하단 고정 패널 (지도 55% + 패널 45%) */
+  /* 사이드: 지도 바로 아래 (55vh~100vh) */
   .side{
     position:fixed;
+    top:55vh;
     bottom:0;left:0;right:0;
     width:100%;
     height:45vh;
@@ -1090,16 +1091,8 @@ function processLandData(data, lon, lat) {
   if (currentMapType === "2d") {
     try {
       var mercCoord = ol.proj.fromLonLat([parcelCenter[0], parcelCenter[1]]);
-      if (window.innerWidth <= 768) {
-        // 모바일: 하단 패널(45vh)이 지도를 가리므로 가시영역 중앙에 필지 배치
-        // 뷰 중심을 필지보다 아래로 (panelH/2)만큼 내려 필지가 가시영역 중앙에 오도록 함
-        var panelPx = window.innerHeight * 0.45;
-        var res = map2d.getView().getResolution();
-        var yOffset = (panelPx / 2) * res; // EPSG:3857 단위, Y축 아래로 이동
-        map2d.getView().animate({ center: [mercCoord[0], mercCoord[1] - yOffset], duration: 400 });
-      } else {
-        map2d.getView().animate({ center: mercCoord, duration: 400 });
-      }
+      // 모바일: 지도(55vh)와 패널(45vh)이 분리되어 오버랩 없음 → 단순 중앙 이동
+      map2d.getView().animate({ center: mercCoord, duration: 400 });
     } catch(e){}
   } else {
     try {
@@ -1455,6 +1448,8 @@ function searchAddress() {
   if (!q) { showMsg("검색어를 입력하세요.", "err"); return; }
   closeAddrResults();
   showMsg("🔍 주소를 검색 중입니다...");
+  // "산 NN" 또는 "산NN" 패턴이면 도로명 검색 없이 바로 지번 검색
+  if (/산[\s\d]/.test(q)) { searchParcel(q); return; }
   $.ajax({
     type:"get", url:"https://api.vworld.kr/req/search",
     data:{ service:"search", version:"2.0", request:"search", key:apiKey,
@@ -1476,7 +1471,16 @@ function searchAddress() {
   });
 }
 
-function searchParcel(q) {
+/* "산12" ↔ "산 12" 공백 정규화 (VWorld API 포맷 대응) */
+function normSanJibun(q) {
+  // "산12-3" 형태 → "산 12-3" (공백 추가)
+  if (/산(\d)/g.test(q)) return q.replace(/산(\d)/g, '산 $1');
+  // "산 12-3" 형태 → "산12-3" (공백 제거)
+  if (/산 (\d)/g.test(q)) return q.replace(/산 (\d)/g, '산$1');
+  return q;
+}
+
+function searchParcel(q, _fallback) {
   $.ajax({
     type:"get", url:"https://api.vworld.kr/req/search",
     data:{ service:"search", version:"2.0", request:"search", key:apiKey,
@@ -1490,7 +1494,17 @@ function searchParcel(q) {
         } else {
           showAddrResults(items);
         }
-      } else { showMsg("주소를 찾을 수 없습니다: " + q, "err"); }
+      } else if (!_fallback && /산[\s\d]/.test(q)) {
+        // 산 지번 공백 정규화 후 1회 재시도
+        var qAlt = normSanJibun(q);
+        if (qAlt !== q) {
+          searchParcel(qAlt, true);
+        } else {
+          showMsg("주소를 찾을 수 없습니다: " + q, "err");
+        }
+      } else {
+        showMsg("주소를 찾을 수 없습니다: " + q, "err");
+      }
     },
     error: function(){ showMsg("주소 검색 오류가 발생했습니다.", "err"); }
   });

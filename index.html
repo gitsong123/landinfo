@@ -363,9 +363,15 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
       <span class="ttl">📂 수집된 토지 정보</span>
       <span class="cnt-badge" id="landCnt">총 0건</span>
     </div>
-    <div class="area-sum-bar" id="areaSumBar" style="display:none;">
-      <span class="area-sum-label">📐 <span id="areaCnt">0</span>필지 합계</span>
-      <span class="area-sum-val" id="areaSumVal">0 ㎡</span>
+    <div class="area-sum-bar" id="areaSumBar" style="display:none; flex-direction:column; gap:4px; align-items:stretch;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="area-sum-label">📐 <span id="areaCnt">0</span>필지 면적 합계</span>
+        <span class="area-sum-val" id="areaSumVal">0 ㎡</span>
+      </div>
+      <div id="jigaSumRow" style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(26,95,168,0.2); pt:4px; margin-top:2px;">
+        <span class="area-sum-label">💰 공시지가 총액</span>
+        <span class="area-sum-val" id="jigaSumVal" style="color:#e67e22;">0 원</span>
+      </div>
     </div>
 
     <!-- 토지 목록 -->
@@ -1412,15 +1418,37 @@ function showEmptyState() {
 function updateCnt() {
   var cnt = collectedLandInfo.length;
   $("#landCnt").text("총 " + cnt + "건");
-  var totalArea = collectedLandInfo.reduce(function(sum, d){
+  
+  var totalArea = 0;
+  var totalJigaSum = 0;
+  
+  collectedLandInfo.forEach(function(d) {
     var a = parseFloat(d.area_ || d.parea || 0);
-    return sum + (isNaN(a) ? 0 : a);
-  }, 0);
+    if (!isNaN(a)) totalArea += a;
+    
+    // 공시지가 합계 (면적 * 공시지가)
+    var j = String(d.jiga || '0').replace(/,/g, '');
+    var jNum = parseFloat(j);
+    if (!isNaN(a) && !isNaN(jNum) && jNum > 0) {
+      totalJigaSum += (a * jNum);
+    }
+  });
+
   if (cnt > 0) {
     $("#areaCnt").text(cnt);
     var display = totalArea.toLocaleString('ko-KR', { maximumFractionDigits:1 }) + ' ㎡';
     var pyeong = (totalArea * 0.3025).toLocaleString('ko-KR', { maximumFractionDigits:1 });
     $("#areaSumVal").text(display + '  ≈  ' + pyeong + ' 평');
+    
+    // 공시지가 총액 표시
+    if (totalJigaSum > 0) {
+      $("#jigaSumVal").text(Math.round(totalJigaSum).toLocaleString('ko-KR') + ' 원');
+      $("#jigaSumRow").show();
+    } else {
+      $("#jigaSumVal").text('0 원');
+      $("#jigaSumRow").hide();
+    }
+    
     $("#areaSumBar").show();
   } else {
     $("#areaSumBar").hide();

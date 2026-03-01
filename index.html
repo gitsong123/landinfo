@@ -949,9 +949,9 @@ function changeMapType() {
     $("#bldRow").show();
     if (isLandParcelActive) { isLandParcelActive = false; toggle3dLayer(true); }
 
-    // 3D 위치 이동 (줌레벨 → 고도 변환)
+    // 3D 위치 이동 (줌레벨 → 고도 변환: zoom18 ≈ 500m)
     if (lon2d && lat2d) {
-      var alt = Math.max(200, Math.pow(2, 20 - zoom2d) * 250);
+      var alt = Math.max(150, Math.pow(2, 20 - zoom2d) * 125);
       setTimeout(function(){
         try {
           map3d.moveTo(new vw.CameraPosition(
@@ -959,7 +959,13 @@ function changeMapType() {
             new vw.Direction(0, -90, 0)
           ));
         } catch(e){}
-      }, 300);
+        // 수집 필지 3D 하이라이트 복원
+        collectedLandInfo.forEach(function(d) {
+          if (d._geometry && !highlight3dEntities[d.pnu]) {
+            addHighlight3d(d._geometry, d.pnu);
+          }
+        });
+      }, 500);
     }
     try{ map3d.refresh(); }catch(e){}
 
@@ -979,12 +985,14 @@ function changeMapType() {
     if (isLandParcelActive) { isLandParcelActive = false; toggle2dLayer(true); }
 
     if (lon3d && lat3d) {
-      var zoom2dNew = z3d ? Math.max(CADASTRAL_MIN_ZOOM, Math.min(20, Math.round(20 - Math.log2(z3d / 150)))) : 18;
+      var zoom2dNew = z3d ? Math.max(CADASTRAL_MIN_ZOOM, Math.min(20, Math.round(20 - Math.log2(z3d / 125)))) : 18;
       try {
         map2d.getView().setCenter(ol.proj.fromLonLat([lon3d, lat3d]));
         map2d.getView().setZoom(zoom2dNew);
       } catch(e){}
     }
+    // 3D 하이라이트 제거 (2D 하이라이트는 highlightLayer에 그대로 유지됨)
+    Object.keys(highlight3dEntities).forEach(function(pnu){ removeHighlight3d(pnu); });
     try{ map2d.updateSize(); }catch(e){}
     checkCadastralZoom();
   }
@@ -1343,23 +1351,42 @@ function removeHighlight2d(pnu) {
    3D 필지 하이라이트
 =================================================== */
 function findCesiumViewer() {
-  if (!window.Cesium) return null;
-  // 다양한 경로로 Cesium Viewer 탐색
-  var tries = [
+  // VWorld 3D는 Cesium 기반 — window.Cesium 또는 vw.Cesium 어느 쪽이든 허용
+  var CesiumLib = window.Cesium || (typeof vw !== 'undefined' && vw.Cesium);
+  if (!CesiumLib || !map3d) return null;
+
+  // 1) map3d 직접 속성 탐색
+  var candidates = [
     map3d._viewer, map3d.viewer,
-    map3d.getCesiumViewer && map3d.getCesiumViewer()
+    map3d._cesiumViewer, map3d.cesiumViewer,
+    map3d._widget, map3d.widget, map3d._cesiumWidget,
+    map3d._scene && map3d._scene.viewer,
+    (typeof map3d.getCesiumViewer === 'function') && map3d.getCesiumViewer(),
+    (typeof map3d.getViewer      === 'function') && map3d.getViewer()
   ];
-  for (var ti = 0; ti < tries.length; ti++) {
-    if (tries[ti] && tries[ti].entities) return tries[ti];
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    if (c && c.entities && typeof c.entities.add === 'function') return c;
   }
-  // DOM 요소 내부 탐색
+
+  // 2) #vmap DOM 요소 속성 탐색
   var vmapEl = document.getElementById('vmap');
-  if (vmapEl) {
-    for (var k in vmapEl) {
+  if (!vmapEl) return null;
+  for (var k in vmapEl) {
+    try {
+      var v = vmapEl[k];
+      if (v && typeof v === 'object' && v.entities && typeof v.entities.add === 'function') return v;
+    } catch(e) {}
+  }
+
+  // 3) #vmap 직계 자식 요소 속성 탐색 (Cesium widget div)
+  for (var ci = 0; ci < vmapEl.children.length; ci++) {
+    var child = vmapEl.children[ci];
+    for (var ck in child) {
       try {
-        var v = vmapEl[k];
-        if (v && typeof v === 'object' && v.entities && typeof v.entities.add === 'function') return v;
-      } catch(e2) {}
+        var cv = child[ck];
+        if (cv && typeof cv === 'object' && cv.entities && typeof cv.entities.add === 'function') return cv;
+      } catch(e) {}
     }
   }
   return null;
@@ -1368,6 +1395,11 @@ function findCesiumViewer() {
 function addHighlight3d(geometry, pnu) {
   function doHighlight(retriesLeft) {
     try {
+      var C = window.Cesium || (typeof vw !== 'undefined' && vw.Cesium);
+      if (!C) {
+        if (retriesLeft > 0) setTimeout(function(){ doHighlight(retriesLeft - 1); }, 600);
+        return;
+      }
       var viewer = findCesiumViewer();
       if (!viewer) {
         if (retriesLeft > 0) setTimeout(function(){ doHighlight(retriesLeft - 1); }, 600);
@@ -1377,14 +1409,14 @@ function addHighlight3d(geometry, pnu) {
         ? geometry.coordinates[0][0]
         : geometry.coordinates[0];
       var positions = coords.map(function(c) {
-        return Cesium.Cartesian3.fromDegrees(c[0], c[1]);
+        return C.Cartesian3.fromDegrees(c[0], c[1]);
       });
       var polyEnt = viewer.entities.add({
         polygon: {
-          hierarchy: new Cesium.PolygonHierarchy(positions),
-          material: Cesium.Color.RED.withAlpha(0.3),
-          classificationType: typeof Cesium.ClassificationType !== 'undefined'
-            ? Cesium.ClassificationType.BOTH : undefined
+          hierarchy: new C.PolygonHierarchy(positions),
+          material: C.Color.RED.withAlpha(0.3),
+          classificationType: typeof C.ClassificationType !== 'undefined'
+            ? C.ClassificationType.BOTH : undefined
         }
       });
       var linePositions = positions.concat([positions[0]]);
@@ -1392,9 +1424,9 @@ function addHighlight3d(geometry, pnu) {
         polyline: {
           positions: linePositions,
           width: 3,
-          material: new Cesium.PolylineOutlineMaterialProperty({
-            color: Cesium.Color.RED,
-            outlineColor: Cesium.Color.WHITE,
+          material: new C.PolylineOutlineMaterialProperty({
+            color: C.Color.RED,
+            outlineColor: C.Color.WHITE,
             outlineWidth: 1
           }),
           clampToGround: true
@@ -1542,8 +1574,8 @@ function processLandData(data, lon, lat) {
   // ── 토글: 이미 선택 → 해제, 새 선택 → 추가 ──
   var alreadySelected = collectedLandInfo.some(function(x){ return x.pnu === d.pnu; });
   if (alreadySelected) {
-    if (currentMapType === "2d") removeHighlight2d(d.pnu);
-    else removeHighlight3d(d.pnu);
+    removeHighlight2d(d.pnu);
+    removeHighlight3d(d.pnu);
     collectedLandInfo = collectedLandInfo.filter(function(x){ return x.pnu !== d.pnu; });
     removeMarker(d.pnu);
     $('.land-item[data-pnu="' + d.pnu + '"]').remove();
@@ -1560,6 +1592,7 @@ function processLandData(data, lon, lat) {
     d.bio_gr   = '-';
     d._lon = parcelCenter[0];
     d._lat = parcelCenter[1];
+    d._geometry = best.geometry; // 지도 전환 시 하이라이트 복원용
     addLandInfo(d);        // 카드 즉시 추가 (등급은 '-' 표시 후 업데이트)
     addMarker(lon, lat, d);
     autoOpenMobileSheet();
@@ -1762,8 +1795,8 @@ function removeMarker(pnu) {
 =================================================== */
 $(document).on('click', '.del-btn, .mob-del-btn', function() {
   var pnu = $(this).data('pnu');
-  if (currentMapType === "2d") removeHighlight2d(pnu);
-  else removeHighlight3d(pnu);
+  removeHighlight2d(pnu);
+  removeHighlight3d(pnu);
   collectedLandInfo = collectedLandInfo.filter(function(x){ return x.pnu !== pnu; });
   removeMarker(pnu);
   $('.land-item[data-pnu="' + pnu + '"]').remove();
@@ -1967,8 +2000,8 @@ function moveTo(lon, lat) {
 =================================================== */
 // 새창에서 삭제 버튼 클릭 시 부모창에서도 해당 필지 제거
 window.deleteLandFromChild = function(pnu) {
-  if (currentMapType === "2d") removeHighlight2d(pnu);
-  else removeHighlight3d(pnu);
+  removeHighlight2d(pnu);
+  removeHighlight3d(pnu);
   collectedLandInfo = collectedLandInfo.filter(function(x){ return x.pnu !== pnu; });
   removeMarker(pnu);
   $('.land-item[data-pnu="' + pnu + '"]').remove();

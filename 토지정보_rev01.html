@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html style="height: 100%; margin: 0; padding: 0;">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>토지정보 조회 및 다운로드 시스템</title>
+    <script type="text/javascript" src="https://map.vworld.kr/js/webglMapInit.js.do?version=3.0&apiKey=A12CEDAE-86F1-3453-BC92-3FD98BE14103"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+        .map-container {
+            flex: 7;
+            position: relative;
+            height: 100%;
+        }
+        .info-container {
+            flex: 3;
+            overflow-y: auto;
+            padding: 0;
+            border-left: 2px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background-color: #fafafa;
+        }
+        
+        /* 헤더 스타일 */
+        .app-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .app-header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .app-header p {
+            margin: 5px 0 0 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        /* 옵션 패널 스타일 */
+        .options-panel {
+            padding: 15px;
+            background-color: white;
+            margin: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .option-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .option-item:last-child {
+            border-bottom: none;
+        }
+        .option-label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        .option-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        /* 상태 메시지 */
+        .status-message {
+            margin: 15px;
+            padding: 12px;
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+            display: none;
+            font-size: 13px;
+            color: #1976d2;
+        }
+        .status-message.success {
+            background-color: #e8f5e9;
+            border-left-color: #4caf50;
+            color: #2e7d32;
+        }
+        .status-message.error {
+            background-color: #ffebee;
+            border-left-color: #f44336;
+            color: #c62828;
+        }
+        
+        /* 정보 헤더 */
+        .info-header {
+            margin: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .info-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        .land-count {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        /* 토지 정보 리스트 */
+        .land-info-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 15px 15px 15px;
+        }
+        .land-item {
+            margin-bottom: 12px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            transition: all 0.2s ease;
+        }
+        .land-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        .land-item h4 {
+            margin: 0 0 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .land-item h4 span {
+            color: #667eea;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .land-item ul {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+        .land-item ul li {
+            padding: 6px 0;
+            font-size: 13px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+        }
+        .land-item ul li strong {
+            color: #333;
+            min-width: 80px;
+        }
+        
+        /* 버튼 스타일 */
+        button {
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        .delete-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            font-size: 11px;
+            padding: 6px 12px;
+            margin-left: 5px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 15px;
+        }
+        .button-group button {
+            flex: 1;
+        }
+        
+        /* 체크박스 스타일 */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        /* 맵 스타일 */
+        #vmap {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* 스크롤바 스타일 */
+        .land-info-list::-webkit-scrollbar,
+        .info-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .land-info-list::-webkit-scrollbar-track,
+        .info-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .land-info-list::-webkit-scrollbar-thumb,
+        .info-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .land-info-list::-webkit-scrollbar-thumb:hover,
+        .info-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* 빈 상태 메시지 */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        .empty-state p {
+            margin: 0;
+            font-size: 14px;
+        }
+        
+        /* 반응형 스타일 */
+        @media screen and (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .map-container {
+                flex: none;
+                height: 50vh;
+            }
+            .info-container {
+                flex: none;
+                height: 50vh;
+            }
+            .button-group {
+                flex-direction: column;
+            }
+            .button-group button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- 맵 영역 -->
+        <div class="map-container">
+            <div id="vmap"></div>
+        </div>
+        
+        <!-- 정보 영역 -->
+        <div class="info-container">
+            <!-- 헤더 -->
+            <div class="app-header">
+                <h1>🗺️ 토지정보 조회 시스템</h1>
+                <p>VWorld API 기반 지적정보 조회 및 관리</p>
+            </div>
+            
+            <!-- 옵션 패널 -->
+            <div class="options-panel">
+                <div class="option-item">
+                    <span class="option-label">🏢 건물 레이어</span>
+                    <div class="option-controls">
+                        <input type="checkbox" id="buildingLayer" onclick="checkLayer(this, 'facility_build')" checked="checked">
+                        <label for="buildingLayer">표시</label>
+                    </div>
+                </div>
+                <div class="option-item">
+                    <span class="option-label">📍 지적도 레이어 <span style="font-size:11px;color:#667eea;font-weight:400;">(기본)</span></span>
+                    <div class="option-controls">
+                        <button class="btn-success" onclick="toggleLandParcelLayer(true)" style="outline:3px solid #fff;">활성화</button>
+                        <button class="btn-secondary" onclick="toggleLandParcelLayer(false)">비활성화</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 상태 메시지 -->
+            <div class="status-message" id="statusMessage">
+                지도를 로딩 중입니다. 잠시 후 지적도가 자동으로 활성화됩니다.
+            </div>
+
+            <!-- 정보 헤더 -->
+            <div class="info-header">
+                <div class="info-title">📋 수집된 토지 정보</div>
+                <div class="land-count" id="landCount">총 0건</div>
+            </div>
+
+            <!-- 토지 정보 리스트 -->
+            <div class="land-info-list" id="landInfoList">
+                <div class="empty-state">
+                    <i>📍</i>
+                    <p>지적도를 활성화하고<br>지도에서 토지를 클릭하세요</p>
+                </div>
+            </div>
+
+            <!-- 버튼 그룹 -->
+            <div class="button-group">
+                <button class="btn-warning" id="clearButton">🗑️ 모두 지우기</button>
+                <button class="btn-success" id="exportButton">💾 CSV 내보내기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수 선언
+        var map;
+        var landParcelLayer = null;
+        var isLandParcelActive = false;
+        var collectedLandInfo = [];
+        var markers = [];
+        var apiKey = "A12CEDAE-86F1-3453-BC92-3FD98BE14103";
+        
+        $(document).ready(function() {
+            initMap();
+            setupEventListeners();
+            showMessage("🗺️ 2D 일반 지도 + 지적도를 불러오는 중입니다...", "info");
+        });
+        
+        function initMap() {
+            var options = {
+                mapId: "vmap",
+                initPosition: new vw.CameraPosition(
+                    new vw.CoordZ(126.92775802528264, 37.52501881993892, 12416),
+                    new vw.Direction(0, -90, 0)
+                ),
+                logo: true,
+                navigation: true
+            };
+
+            map = new vw.Map();
+            map.setOption(options);
+            map.setMapId("vmap");
+            map.setInitPosition(new vw.CameraPosition(
+                new vw.CoordZ(126.92775802528264, 37.52501881993892, 12416),
+                new vw.Direction(0, -90, 0)
+            ));
+
+            map.setLogoVisible(true);
+            map.setNavigationZoomVisible(true);
+            map.start();
+
+            // 지도 초기화 후 지적도 자동 활성화 (기본 레이어)
+            setTimeout(function() {
+                toggleLandParcelLayer(true);
+            }, 2000);
+
+            console.log("지도가 초기화되었습니다.");
+        }
+        
+        function setupEventListeners() {
+            $("#clearButton").click(function() {
+                clearLandInfo();
+            });
+            
+            $("#exportButton").click(function() {
+                exportToCSV();
+            });
+        }
+        
+        function checkLayer(c, name) {
+            if($(c).is(":checked") == false) {
+                map.getLayerElement(name).hide();
+            } else {
+                map.getLayerElement(name).show();
+            }
+        }
+
+        function toggleLandParcelLayer(enable) {
+            if (enable) {
+                if (!isLandParcelActive) {
+                    try {
+                        landParcelLayer = new vw.Layers();
+
+                        // ① 일반 지도 베이스 레이어 (위성사진 대신 2D 일반 지도)
+                        var baseSource = new vw.source.TileWMS();
+                        baseSource.setParams("tilesize=256");
+                        baseSource.setLayers("Base");
+                        baseSource.setFormat("image/jpeg");
+                        baseSource.setUrl("https://api.vworld.kr/req/wms?Key=" + apiKey + "&");
+                        var baseTile = new vw.layer.Tile(baseSource);
+                        landParcelLayer.add(baseTile);
+
+                        // ② 지적도 레이어 (일반 지도 위에 오버레이)
+                        var wmsSource = new vw.source.TileWMS();
+                        wmsSource.setParams("tilesize=256");
+                        wmsSource.setLayers("lt_c_landinfobasemap");
+                        wmsSource.setStyles("lt_c_landinfobasemap");
+                        wmsSource.setFormat("image/png");
+                        wmsSource.setUrl("https://api.vworld.kr/req/wms?Key=" + apiKey + "&");
+                        var wmsTile = new vw.layer.Tile(wmsSource);
+                        landParcelLayer.add(wmsTile);
+
+                        map.onClick.addEventListener(handleMapClick);
+
+                        isLandParcelActive = true;
+                        updateLayerButtonState(true);
+                        showMessage("✅ 지적도가 활성화되었습니다. 지도에서 토지를 클릭하세요.", "success");
+                        console.log("지적도 레이어가 활성화되었습니다.");
+                    } catch(e) {
+                        console.error("지적도 활성화 오류:", e);
+                        showMessage("❌ 지적도 활성화 중 오류가 발생했습니다.", "error");
+                    }
+                } else {
+                    showMessage("지적도가 이미 활성화되어 있습니다.", "info");
+                }
+            } else {
+                if (isLandParcelActive) {
+                    if (landParcelLayer) {
+                        landParcelLayer.removeAll();
+                        landParcelLayer = null;
+                    }
+
+                    map.onClick.removeEventListener(handleMapClick);
+
+                    isLandParcelActive = false;
+                    updateLayerButtonState(false);
+                    showMessage("지적도가 비활성화되었습니다.", "info");
+                    console.log("지적도 레이어가 비활성화되었습니다.");
+                } else {
+                    showMessage("지적도가 이미 비활성화되어 있습니다.", "info");
+                }
+            }
+        }
+
+        // 레이어 버튼 상태 시각적 업데이트
+        function updateLayerButtonState(active) {
+            var btnOn  = document.querySelector('.btn-success[onclick="toggleLandParcelLayer(true)"]');
+            var btnOff = document.querySelector('.btn-secondary[onclick="toggleLandParcelLayer(false)"]');
+            if (btnOn && btnOff) {
+                if (active) {
+                    btnOn.style.outline  = "3px solid #fff";
+                    btnOff.style.outline = "none";
+                } else {
+                    btnOn.style.outline  = "none";
+                    btnOff.style.outline = "3px solid #fff";
+                }
+            }
+        }
+        
+        function addMarker(longitude, latitude, pnu) {
+            try {
+                var newMarker = new vw.Marker({
+                    position: new vw.Coord(longitude, latitude),
+                    icon: new vw.Icon({
+                        url: 'https://map.vworld.kr/images/icon_marker.png',
+                        size: new vw.Size(32, 32),
+                        anchor: new vw.Point(16, 32)
+                    })
+                });
+                
+                var markerLayer = new vw.Layers();
+                markerLayer.add(newMarker);
+                map.addLayer(markerLayer);
+                
+                markers.push({
+                    pnu: pnu,
+                    marker: newMarker,
+                    layer: markerLayer
+                });
+                
+                console.log("마커가 추가되었습니다:", pnu);
+            } catch(e) {
+                console.error("마커 추가 오류:", e);
+            }
+        }
+
+        function removeMarker(pnu) {
+            for(var i = 0; i < markers.length; i++) {
+                if(markers[i].pnu === pnu) {
+                    try {
+                        markers[i].marker.remove();
+                        markers.splice(i, 1);
+                        console.log("마커가 제거되었습니다:", pnu);
+                    } catch(e) {
+                        console.error("마커 제거 오류:", e);
+                    }
+                    break;
+                }
+            }
+        }
+
+        function removeAllMarkers() {
+            markers.forEach(function(item) {
+                try {
+                    item.marker.remove();
+                } catch(e) {
+                    console.error("마커 제거 오류:", e);
+                }
+            });
+            markers = [];
+            console.log("모든 마커가 제거되었습니다.");
+        }
+
+        function getBuffer(x, y) {
+            var position = map.getCurrentPosition().position;
+            var z = position.z;
+
+            var m = 1/(111000/z*1.48*50);
+            var h = 1/(111000/z*1.85*50);
+
+            return [m, h];
+        }
+        
+        function handleMapClick(windowPosition, ecefPosition, cartographic, featureInfo, event) {
+            if (!isLandParcelActive) return;
+            
+            var mh = getBuffer(cartographic.longitudeDD, cartographic.latitudeDD);
+            var min = [cartographic.longitudeDD-mh[0], cartographic.latitudeDD-mh[1]];
+            var max = [cartographic.longitudeDD+mh[0], cartographic.latitudeDD+mh[1]];
+            var bbox = min[0]+","+min[1]+","+max[0]+","+max[1];
+            
+            showMessage("🔍 토지 정보를 조회 중입니다...", "info");
+            
+            $.ajax({
+                type: "get",
+                url: "https://api.vworld.kr/req/wfs",
+                data: {
+                    key: apiKey,
+                    domain: window.location.hostname || "localhost",
+                    SERVICE: "WFS",
+                    version: "1.1.0",
+                    request: "GetFeature",
+                    TYPENAME: "lt_c_landinfobasemap",
+                    OUTPUT: "text/javascript",
+                    SRSNAME: "EPSG:4326",
+                    BBOX: bbox,
+                    maxFeatures: 1
+                },
+                dataType: 'jsonp',
+                jsonpCallback: "parseResponse",
+                success: function(data) {
+                    console.log("WFS 응답:", data);
+                    
+                    if(data.totalFeatures == 0 || !data.features || data.features.length == 0) {
+                        showMessage("❌ 선택한 위치에 토지 정보가 없습니다.", "error");
+                    } else {
+                        var landData = data.features[0].properties;
+                        console.log("토지 데이터:", landData);
+                        
+                        var isDuplicate = false;
+                        for(var i = 0; i < collectedLandInfo.length; i++) {
+                            if(collectedLandInfo[i].pnu === landData.pnu) {
+                                isDuplicate = true;
+                                showMessage("⚠️ 이미 수집된 토지 정보입니다.", "error");
+                                break;
+                            }
+                        }
+                        
+                        if(!isDuplicate) {
+                            addLandInfo(landData);
+                            addMarker(cartographic.longitudeDD, cartographic.latitudeDD, landData.pnu);
+                            showMessage("✅ 토지 정보가 추가되었습니다.", "success");
+                        }
+                    }
+                },
+                error: function(xhr, stat, err) {
+                    console.error("AJAX 오류:", err);
+                    console.error("응답:", xhr.responseText);
+                    showMessage("❌ 정보 조회 중 오류가 발생했습니다.", "error");
+                }
+            });
+        }
+        
+        function addLandInfo(landData) {
+            $(".empty-state").remove();
+            
+            collectedLandInfo.push(landData);
+            
+            var landItem = $('<div class="land-item"></div>');
+            var landHeader = $('<h4></h4>');
+            
+            var addressText = [
+                landData.sido_nm,
+                landData.sgg_nm,
+                landData.emd_nm,
+                landData.ri_nm,
+                landData.jibun
+            ].filter(Boolean).join(' ');
+            
+            landHeader.append('<span>' + addressText + '</span>');
+            
+            var deleteBtn = $('<button class="delete-btn">삭제</button>');
+            deleteBtn.click(function() {
+                removeLandInfo(landData.pnu);
+                removeMarker(landData.pnu);
+                $(this).closest('.land-item').remove();
+                
+                if(collectedLandInfo.length === 0) {
+                    $("#landInfoList").html('<div class="empty-state"><i>📍</i><p>지적도를 활성화하고<br>지도에서 토지를 클릭하세요</p></div>');
+                }
+            });
+            landHeader.append(deleteBtn);
+            
+            landItem.append(landHeader);
+            
+            var infoList = $('<ul></ul>');
+            infoList.append('<li><strong>필지번호</strong><span>' + (landData.pnu || '-') + '</span></li>');
+            infoList.append('<li><strong>시도</strong><span>' + (landData.sido_nm || '-') + '</span></li>');
+            infoList.append('<li><strong>시군구</strong><span>' + (landData.sgg_nm || '-') + '</span></li>');
+            infoList.append('<li><strong>읍면동</strong><span>' + (landData.emd_nm || '-') + '</span></li>');
+            if(landData.ri_nm) {
+                infoList.append('<li><strong>리</strong><span>' + landData.ri_nm + '</span></li>');
+            }
+            infoList.append('<li><strong>지번</strong><span>' + (landData.jibun || '-') + '</span></li>');
+            infoList.append('<li><strong>지목</strong><span>' + (landData.jimok || '-') + '</span></li>');
+            infoList.append('<li><strong>면적</strong><span>' + (landData.area_ || '-') + ' ㎡</span></li>');
+            
+            landItem.append(infoList);
+            $("#landInfoList").append(landItem);
+            
+            updateLandCount();
+        }
+        
+        function removeLandInfo(pnu) {
+            for(var i = 0; i < collectedLandInfo.length; i++) {
+                if(collectedLandInfo[i].pnu === pnu) {
+                    collectedLandInfo.splice(i, 1);
+                    break;
+                }
+            }
+            updateLandCount();
+        }
+        
+        function clearLandInfo() {
+            if(collectedLandInfo.length === 0) {
+                showMessage("⚠️ 삭제할 토지 정보가 없습니다.", "error");
+                return;
+            }
+            
+            if(confirm("수집된 모든 토지 정보를 지우시겠습니까?")) {
+                collectedLandInfo = [];
+                $("#landInfoList").html('<div class="empty-state"><i>📍</i><p>지적도를 활성화하고<br>지도에서 토지를 클릭하세요</p></div>');
+                removeAllMarkers();
+                updateLandCount();
+                showMessage("✅ 모든 토지 정보가 삭제되었습니다.", "success");
+            }
+        }
+        
+        function updateLandCount() {
+            $("#landCount").text('총 ' + collectedLandInfo.length + '건');
+        }
+        
+        function exportToCSV() {
+            if(collectedLandInfo.length === 0) {
+                showMessage("⚠️ 내보낼 토지 정보가 없습니다.", "error");
+                return;
+            }
+            
+            var csvContent = "\uFEFF필지번호(PNU),시도명,시군구명,읍면동명,리명,지번,지목,면적(㎡)\n";
+            
+            collectedLandInfo.forEach(function(item) {
+                var row = [
+                    item.pnu || "",
+                    item.sido_nm || "",
+                    item.sgg_nm || "",
+                    item.emd_nm || "",
+                    item.ri_nm || "",
+                    item.jibun || "",
+                    item.jimok || "",
+                    item.area_ || ""
+                ].map(function(field) { return '"' + field + '"'; }).join(",");
+                
+                csvContent += row + "\n";
+            });
+            
+            var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement("a");
+            
+            var dateStr = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            link.setAttribute("href", url);
+            link.setAttribute("download", '토지정보_' + dateStr + '.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showMessage("✅ CSV 파일 다운로드가 완료되었습니다. (총 " + collectedLandInfo.length + "건)", "success");
+        }
+        
+        function showMessage(message, type) {
+            var $msg = $("#statusMessage");
+            $msg.removeClass("success error");
+            
+            if(type === "success") {
+                $msg.addClass("success");
+            } else if(type === "error") {
+                $msg.addClass("error");
+            }
+            
+            $msg.text(message);
+            $msg.fadeIn();
+            
+            setTimeout(function() {
+                $msg.fadeOut();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

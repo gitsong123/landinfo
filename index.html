@@ -223,9 +223,10 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     background:#f4f6fb;
     overflow:hidden;
     transition:transform .3s cubic-bezier(.25,.8,.25,1);
-    /* 하단 주소창 및 Safe Area 완벽 대응 (여백 대폭 강화) */
-    padding-bottom: calc(env(safe-area-inset-bottom) + 120px);
+    /* 하단 주소창 및 Safe Area 완벽 대응 (실제 스페이서 활용으로 변경) */
+    padding-bottom: env(safe-area-inset-bottom);
   }
+  .side .mob-bottom-spacer { display: block !important; }
   /* 패널 숨기기 (핸들만 노출 - 선택적) */
   .side.sheet-collapsed{
     transform:translateY(calc(100% - 44px));
@@ -527,6 +528,8 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     </div>
 
     <div class="footer">© 2025 토지정보조회시스템 · Powered by VWorld API</div>
+    <!-- 모바일 하단 주소창 가림 방지를 위한 물리적 공간 확보 -->
+    <div class="mob-bottom-spacer" style="display:none; height:150px; flex-shrink:0;"></div>
   </div>
 </div>
 

@@ -110,6 +110,9 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 /* 모바일 테이블 (데스크탑에서 항상 숨김 - !important로 JS inline style 방지) */
 .mob-land-tbl-wrap{display:none!important;}
 
+/* 모바일 주제도 빠른 선택 바 (데스크탑 숨김) */
+.mob-theme-bar{display:none;}
+
 /* 주소 검색 결과 드롭다운 */
 .addr-results{position:absolute;left:0;right:0;top:100%;z-index:9999;background:#fff;border:1px solid #c5cde0;border-top:none;border-radius:0 0 8px 8px;box-shadow:0 4px 16px rgba(60,80,180,.15);max-height:220px;overflow-y:auto;}
 .addr-result-item{padding:9px 12px;font-size:12px;color:#333;cursor:pointer;border-bottom:1px solid #f0f3fb;display:flex;flex-direction:column;gap:2px;}
@@ -313,6 +316,45 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   .mob-land-tbl tbody tr:nth-child(even) td{background:#f7f9ff;}
   .mob-land-tbl tbody tr:last-child td{border-bottom:none;}
   .mob-del-btn{padding:2px 6px;background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;}
+
+  /* ── 모바일 주제도 빠른 선택 바 ── */
+  .mob-theme-bar{
+    display:flex;align-items:center;gap:6px;
+    padding:5px 8px;
+    background:#eef2fc;
+    border-top:1px solid #d0d8f0;
+    border-bottom:1px solid #d0d8f0;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    flex-shrink:0;
+    order:7;
+  }
+  .mob-theme-bar::-webkit-scrollbar{display:none;}
+  .mob-theme-label{
+    font-size:10px;font-weight:700;color:#3a7bd5;
+    white-space:nowrap;flex-shrink:0;
+    background:#fff;border:1px solid #c8d6f0;
+    border-radius:10px;padding:2px 7px;
+  }
+  .mob-theme-chips{
+    display:flex;gap:4px;flex-wrap:nowrap;
+  }
+  .mob-theme-chip{
+    padding:3px 8px;
+    border:1px solid #b0bcd8;border-radius:12px;
+    background:#fff;color:#444;
+    font-size:10px;font-weight:600;
+    white-space:nowrap;cursor:pointer;flex-shrink:0;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mob-theme-chip.active{
+    background:linear-gradient(135deg,#3a7bd5,#00d2ff);
+    color:#fff;border-color:#3a7bd5;
+  }
+  .mob-theme-chip.ecvam.active{
+    background:linear-gradient(135deg,#27ae60,#38ef7d);
+    border-color:#27ae60;
+  }
 }
 </style>
 </head>
@@ -467,6 +509,12 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
         <div class="ico">📍</div>
         <p>지도에서 토지를 클릭하면<br>상세 정보가 표시됩니다</p>
       </div>
+    </div>
+
+    <!-- 모바일 주제도 빠른 선택 바 (모바일 전용) -->
+    <div class="mob-theme-bar" id="mobThemeBar">
+      <span class="mob-theme-label">🗂 주제도</span>
+      <div class="mob-theme-chips" id="mobThemeChips"></div>
     </div>
 
     <div class="footer">© 2025 토지정보조회시스템 · Powered by VWorld API</div>
@@ -677,6 +725,7 @@ var hoverTimer = null;
 var hoverCache = {};
 var sortMode = 'newest'; // 'newest' | 'jibun_asc' | 'jibun_desc'
 var CADASTRAL_MIN_ZOOM = 17; // 지적도 가시 최소 줌 레벨 (VWorld LP_PA_CBND_BUBUN 기준)
+var _mobileTapTs = 0; // 모바일 터치 탭 처리 타임스탬프 (singleclick 이중 발화 방지)
 
 /* HTML 특수문자 이스케이프 (XSS 방지) */
 function escHtml(s) {
@@ -820,6 +869,7 @@ $(document).ready(function() {
   setupEvents();
   initThemeList();
   initEcvamThemeList();
+  initMobThemeBar();
 
   $("#vmap").hide();
   $("#ol3map").show();
@@ -891,8 +941,13 @@ function init2dMap() {
   map2d.addLayer(highlightLayer);
   markerLayer = new vw.ol3.layer.Marker(map2d, { showTitle:true });
   map2d.addLayer(markerLayer);
-  map2d.on('singleclick', debounce(handleMap2dClick, 250));
+  map2d.on('singleclick', function(evt) {
+    // 모바일 touchend 핸들러가 이미 처리한 경우 600ms 이내 singleclick 무시
+    if (Date.now() - _mobileTapTs < 600) return;
+    handleMap2dClick(evt);
+  });
   map2d.on('moveend', checkCadastralZoom);
+  setupMobileTapHandler();
 }
 
 /* 지적도 가시 줌 체크 → 경고 배너 표시/숨김 */
@@ -1109,11 +1164,13 @@ function toggleThemeLayer(layerName, enable, theme) {
       } catch(e){ showMsg("레이어 추가 오류: " + e.message, "err"); return; }
     }
     themeLayers[layerName].setVisible(true);
+    syncMobChip(layerName, true);
     showMsg(theme.name + " 주제도 활성화됨.", "ok");
     updateLayerOrder();
   } else {
     if (themeLayers[layerName]) {
       themeLayers[layerName].setVisible(false);
+      syncMobChip(layerName, false);
       showMsg(theme.name + " 주제도 비활성화됨.");
     }
   }
@@ -1172,13 +1229,68 @@ function toggleEcvamLayer(layerId, layerName, enable) {
     } else {
       ecvamThemeLayers[layerId].setVisible(true);
     }
+    syncMobEcvamChip(layerId, true);
     showMsg("🌿 " + layerName + " 레이어 활성화됨.", "ok");
   } else {
     if (ecvamThemeLayers[layerId]) {
       ecvamThemeLayers[layerId].setVisible(false);
+      syncMobEcvamChip(layerId, false);
       showMsg(layerName + " 레이어 비활성화됨.");
     }
   }
+}
+
+/* ===================================================
+   모바일 주제도 빠른 선택 바 초기화 및 동기화
+=================================================== */
+var ecvamShortNames = {
+  'nem_ecvam':    'ECVAM 종합',
+  'nem_eco':      '생태 평가',
+  'nem_eco_01':   '생태자연도',
+  'nem_eco_02':   '자연성',
+  'nem_eco_04':   '희귀성',
+  'nem_law':      '법제 평가',
+  'nem_law_01':   '생태·경관',
+  'nem_law_28':   '자연환경보전',
+  'nem_law_22':   '상수원보호',
+  'nem_law_35':   '개발제한'
+};
+
+function initMobThemeBar() {
+  var $chips = $('#mobThemeChips');
+
+  // 국토계획 주제도 칩 생성
+  themeData.forEach(function(t) {
+    var $chip = $('<button class="mob-theme-chip" data-layer="' + t.layer + '">' + t.name + '</button>');
+    $chip.on('click', function() {
+      var nowActive = $chip.hasClass('active');
+      $chip.toggleClass('active', !nowActive);
+      $('#tc_' + t.layer).prop('checked', !nowActive);
+      toggleThemeLayer(t.layer, !nowActive, t);
+    });
+    $chips.append($chip);
+  });
+
+  // ECVAM 주제도 칩 생성
+  ecvamThemeData.forEach(function(t) {
+    var label = ecvamShortNames[t.id] || t.name;
+    var $chip = $('<button class="mob-theme-chip ecvam" data-ecvam="' + t.id + '">🌿 ' + label + '</button>');
+    $chip.on('click', function() {
+      var nowActive = $chip.hasClass('active');
+      $chip.toggleClass('active', !nowActive);
+      $('#etc_' + t.id).prop('checked', !nowActive);
+      toggleEcvamLayer(t.id, t.name, !nowActive);
+    });
+    $chips.append($chip);
+  });
+}
+
+/* 데스크탑 체크박스 변경 시 모바일 칩 상태 동기화 */
+function syncMobChip(layerName, active) {
+  $('#mobThemeChips .mob-theme-chip[data-layer="' + layerName + '"]').toggleClass('active', active);
+}
+function syncMobEcvamChip(layerId, active) {
+  $('#mobThemeChips .mob-theme-chip[data-ecvam="' + layerId + '"]').toggleClass('active', active);
 }
 
 /* ECVAM WMS GetFeatureInfo 등급 조회
@@ -2306,6 +2418,45 @@ function getCenter(geom) {
     coords.forEach(function(p){ sx+=p[0]; sy+=p[1]; });
     return [sx/coords.length, sy/coords.length];
   } catch(e){ return [0,0]; }
+}
+
+/* ===================================================
+   모바일 직접 탭 핸들러 (touchend 기반 즉각 감지)
+   - singleclick 250ms 지연 + 드래그 오탐 문제 해결
+=================================================== */
+function setupMobileTapHandler() {
+  var el = document.getElementById('ol3map');
+  var _tx, _ty, _tt;
+  el.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) {
+      _tx = e.touches[0].clientX;
+      _ty = e.touches[0].clientY;
+      _tt = Date.now();
+    }
+  }, { passive: true });
+  el.addEventListener('touchend', function(e) {
+    if (!isLandParcelActive || currentMapType !== '2d') return;
+    if (e.changedTouches.length !== 1) return;
+    var touch = e.changedTouches[0];
+    var dx = touch.clientX - _tx;
+    var dy = touch.clientY - _ty;
+    var dt = Date.now() - _tt;
+    // 이동 12px 미만 + 500ms 이내: 탭으로 판정
+    if (Math.sqrt(dx * dx + dy * dy) < 12 && dt < 500) {
+      _mobileTapTs = Date.now();
+      try {
+        var rect = el.getBoundingClientRect();
+        var coord = map2d.getCoordinateFromPixel([
+          touch.clientX - rect.left,
+          touch.clientY - rect.top
+        ]);
+        if (coord) {
+          var ll = ol.proj.transform(coord, 'EPSG:3857', 'EPSG:4326');
+          fetchLandInfo(ll[0], ll[1]);
+        }
+      } catch(e2) {}
+    }
+  });
 }
 
 /* ===================================================

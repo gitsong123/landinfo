@@ -197,24 +197,24 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 .sheet-pull{display:none;} /* 데스크탑에서 숨김 */
 
 @media(max-width:768px){
-  /* 레이아웃 재설정 */
-  .wrap{display:block;position:relative;}
+  /* 레이아웃 재설정: 동적 뷰포트 높이 사용 */
+  .wrap{display:block;position:relative;height:100dvh;overflow:hidden;}
 
-  /* 지도: 상단 55vh 고정 (패널과 겹치지 않게) */
+  /* 지도: 상단 55dvh 고정 */
   .map-area{
     position:fixed;
     top:0;left:0;right:0;
-    height:55vh;
+    height:55dvh;
     z-index:1;
   }
 
-  /* 사이드: 지도 바로 아래 (55vh~100vh) */
+  /* 사이드: 지도 바로 아래 (55dvh~100dvh) */
   .side{
     position:fixed;
-    top:55vh;
+    top:55dvh;
     bottom:0;left:0;right:0;
     width:100%;
-    height:45vh;
+    height:45dvh;
     min-width:unset;
     z-index:100;
     border-left:none;
@@ -223,8 +223,8 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     background:#f4f6fb;
     overflow:hidden;
     transition:transform .3s cubic-bezier(.25,.8,.25,1);
-    /* 모바일 하단 버튼 가림 방지 (Safe Area 적용) */
-    padding-bottom: calc(env(safe-area-inset-bottom) + 15px);
+    /* 하단 주소창 및 Safe Area 완벽 대응 (충분한 하단 여백 확보) */
+    padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
   }
   /* 패널 숨기기 (핸들만 노출 - 선택적) */
   .side.sheet-collapsed{
@@ -507,7 +507,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
               <th>면적(㎡)</th>
               <th>용도지역</th>
               <th>소유구분</th>
-              <th></th>
+              <th>기타규제사항</th>
               <th></th>
             </tr>
           </thead>
@@ -1849,13 +1849,14 @@ function toggleMobileSheet() {
   var $toggle = $("#sheetPullToggle");
   var $mapArea = $(".map-area");
   if ($side.hasClass("sheet-collapsed")) {
+    // 펼치기 → 지도 55dvh 복원
     $side.removeClass("sheet-collapsed");
     $toggle.text("▼");
-    $mapArea.css("height", "55vh");
+    $mapArea.css("height", "55dvh");
   } else {
     $side.addClass("sheet-collapsed");
     $toggle.text("▲");
-    $mapArea.css("height", "calc(100vh - 44px)");
+    $mapArea.css("height", "calc(100dvh - 44px)");
   }
   setTimeout(function() { try { map2d.updateSize(); } catch(e) {} }, 320);
 }
@@ -1864,7 +1865,7 @@ function autoOpenMobileSheet() {
   if (window.innerWidth <= 768) {
     $("#sidePanel").removeClass("sheet-collapsed");
     $("#sheetPullToggle").text("▼");
-    $(".map-area").css("height", "55vh");
+    $(".map-area").css("height", "55dvh");
     setTimeout(function() { try { map2d.updateSize(); } catch(e) {} }, 320);
   }
 }
@@ -2212,7 +2213,7 @@ function openTableWindow() {
     '</div>' +
     '<div class="tbl-wrap"><table>' +
     '<thead><tr><th>순번</th><th>주소</th><th>지목</th><th>면적(㎡)</th>' +
-      '<th>공시지가(원/㎡)</th><th>공시지가 총액(원)</th><th>소유구분</th><th>용도지역</th><th>지구단위계획구역</th><th></th><th>삭제</th>' +
+      '<th>공시지가(원/㎡)</th><th>공시지가 총액(원)</th><th>소유구분</th><th>용도지역</th><th>지구단위계획구역</th><th>기타규제사항</th><th>삭제</th>' +
     '</tr></thead>' +
     '<tbody id="tbl-body">' + rows + '</tbody>' +
     '<tfoot><tr>' +
@@ -2287,7 +2288,7 @@ function openTableWindow() {
     '}' +
     'function exportCSV(){' +
     '  var fmt=function(v){return(v&&!isNaN(v))?Number(v).toLocaleString():(v||"");};' +
-    '  var csv="\\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),공시지가 총액(원),소유구분,용도지역,지구단위계획구역,상세규제\\n";' +
+    '  var csv="\\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),공시지가 총액(원),소유구분,용도지역,지구단위계획구역,기타규제사항\\n";' +
     '  var tot=0,jigaTot=0;' +
     '  _data.forEach(function(d,i){' +
     '    var a=parseFloat(d.area||0);if(!isNaN(a))tot+=a;' +

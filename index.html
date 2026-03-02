@@ -119,6 +119,16 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 .land-kv-k{color:#777;font-weight:600;min-width:90px;flex-shrink:0;font-size:11px;}
 .land-kv-v{color:#1a1a2e;font-weight:700;text-align:right;word-break:break-all;font-size:12px;}
 
+/* 기타규제사항 토글 스타일 */
+.reg-toggle-btn{width:100%;padding:6px 12px;background:#f0f4ff;border:none;border-top:1px solid #f5f7ff;color:#3a7bd5;font-size:11px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center;outline:none;}
+.reg-toggle-btn:hover{background:#e8f0ff;}
+.reg-content{display:none;padding:4px 0;background:#fff;border-bottom:1px solid #f5f7ff;}
+.reg-list-item{display:flex;align-items:flex-start;gap:8px;padding:5px 12px;border-bottom:1px solid #fafbff;font-size:11px;}
+.reg-list-item:last-child{border-bottom:none;}
+.reg-ico{font-size:14px;flex-shrink:0;margin-top:1px;}
+.reg-label{color:#64748b;font-weight:600;min-width:70px;}
+.reg-val{color:#1a1a2e;font-weight:700;flex:1;}
+
 /* 모바일 테이블 (데스크탑에서 항상 숨김 - !important로 JS inline style 방지) */
 .mob-land-tbl-wrap{display:none!important;}
 
@@ -444,8 +454,8 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
       <div id="themeList"></div>
     </div>
 
-    <!-- ECVAM 환경성평가 주제도 -->
-    <div class="theme-panel" id="ecvamPanel">
+    <!-- ECVAM 환경성평가 주제도 (숨김) -->
+    <div class="theme-panel" id="ecvamPanel" style="display:none;">
       <div class="theme-hd">
         <span class="theme-hd-title">🌿 국토환경성평가 주제도</span>
         <button class="toggle-btn" id="ecvamToggleBtn" onclick="toggleEcvamPanel()">펼치기</button>
@@ -510,7 +520,8 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
               <th>지목</th>
               <th>면적(㎡)</th>
               <th>용도지역</th>
-              <th>지구단위계획구역</th>
+              <th>소유구분</th>
+              <th>기타규제사항</th>
               <th></th>
             </tr>
           </thead>
@@ -747,7 +758,7 @@ var jigaUnit = '원'; // 공시지가 표시 단위: '원' | '천원' | '백만�
 var hoverTimer = null;
 var hoverCache = {};
 var sortMode = 'newest'; // 'newest' | 'jibun_asc' | 'jibun_desc'
-var CADASTRAL_MIN_ZOOM = 17; // 지적도 가시 최소 줌 레벨 (VWorld LP_PA_CBND_BUBUN 기준)
+var CADASTRAL_MIN_ZOOM = 15; // LX 지적도(편집지적도) 가시 최소 줌 레벨
 var _mobileTapTs = 0; // 모바일 터치 탭 처리 타임스탬프 (singleclick 이중 발화 방지)
 
 /* HTML 특수문자 이스케이프 (XSS 방지) */
@@ -784,6 +795,31 @@ function naturalCmp(a, b) {
   var am = parseInt(ap[0]) || 0, bm = parseInt(bp[0]) || 0;
   if (am !== bm) return am - bm;
   return (parseInt(ap[1]) || 0) - (parseInt(bp[1]) || 0);
+}
+
+/* ── 추가된 매핑 데이터 ── */
+var OWN_NM = {'0':'일본인·창씨명','1':'개인','2':'국유지','3':'외국인','4':'시·도유지','5':'군유지','6':'법인','7':'종중','8':'종교단체','9':'기타단체'};
+var USE_CATEGORIES = [
+  {pat:/제1종전용주거|제2종전용주거|제1종일반주거|제2종일반주거|제3종일반주거|준주거|주거지역/,cat:'주거지역',ico:'🏠'},
+  {pat:/상업지역|근린상업|일반상업|중심상업|유통상업/,cat:'상업지역',ico:'🏪'},
+  {pat:/공업지역|전용공업|일반공업|준공업/,cat:'공업지역',ico:'🏭'},
+  {pat:/녹지지역|보전녹지|생산녹지|자연녹지/,cat:'녹지지역',ico:'🌳'},
+  {pat:/개발제한|그린벨트/,cat:'개발제한구역',ico:'🚫'},
+  {pat:/농업진흥|농업보호|농지/,cat:'농지 규제',ico:'🌾'},
+  {pat:/보전산지|준보전산지|산지/,cat:'산지 규제',ico:'⛰'},
+  {pat:/수도|상수원|취수/,cat:'수도·상수원 보호',ico:'💧'},
+  {pat:/문화재|역사|기념물/,cat:'문화재 보호',ico:'🏛'},
+  {pat:/공원|국립공원|도립공원|군립공원/,cat:'공원 지역',ico:'🌲'},
+  {pat:/관리지역|보전관리|생산관리|계획관리/,cat:'관리지역',ico:'📋'},
+  {pat:/농림지역/,cat:'농림지역',ico:'🌱'},
+  {pat:/자연환경보전/,cat:'자연환경보전',ico:'🦋'}
+];
+
+function categorizeUse(nm) {
+  for (var i = 0; i < USE_CATEGORIES.length; i++) {
+    if (USE_CATEGORIES[i].pat.test(nm)) return USE_CATEGORIES[i];
+  }
+  return {cat: '기타 규제', ico: '📌'};
 }
 
 /* 정렬 모드 변경 */
@@ -1099,10 +1135,10 @@ function toggleLandParcel(enable) {
 function toggle2dLayer(enable) {
   if (enable && !isLandParcelActive) {
     try {
-      landLayer2d = map2d.addNamedLayer('LP_PA_CBND_BUBUN', 'LP_PA_CBND_BUBUN');
+      landLayer2d = map2d.addNamedLayer('lt_c_landinfobasemap', 'lt_c_landinfobasemap');
       map2d.addLayer(landLayer2d);
       isLandParcelActive = true;
-      showMsg("2D 지적도가 활성화되었습니다.", "ok");
+      showMsg("LX 지적도가 활성화되었습니다.", "ok");
       checkCadastralZoom();
     } catch(e){ showMsg("지적도 활성화 오류: " + e.message, "err"); }
   } else if (!enable && isLandParcelActive) {
@@ -1118,8 +1154,7 @@ function toggle2dLayer(enable) {
 function toggle3dLayer(enable) {
   if (enable && !isLandParcelActive) {
     try {
-      // VWorld 3D 공식 API 패턴 (V-world GitHub 샘플 기반)
-      // setStyles/setFormat 불필요 — setUrl/setLayers/setParams 만 사용
+      // VWorld 3D 공식 API 패턴
       var wmsSource = new vw.source.TileWMS();
       wmsSource.setUrl("https://api.vworld.kr/req/wms?Key=" + apiKey + "&");
       wmsSource.setLayers("lt_c_landinfobasemap");
@@ -1295,7 +1330,8 @@ function initMobThemeBar() {
     $chips.append($chip);
   });
 
-  // ECVAM 주제도 칩 생성
+  // ECVAM 주제도 칩 생성 (숨김)
+  /*
   ecvamThemeData.forEach(function(t) {
     var label = ecvamShortNames[t.id] || t.name;
     var $chip = $('<button class="mob-theme-chip ecvam" data-ecvam="' + t.id + '">🌿 ' + label + '</button>');
@@ -1307,6 +1343,7 @@ function initMobThemeBar() {
     });
     $chips.append($chip);
   });
+  */
 }
 
 /* 데스크탑 체크박스 변경 시 모바일 칩 상태 동기화 */
@@ -1315,76 +1352,6 @@ function syncMobChip(layerName, active) {
 }
 function syncMobEcvamChip(layerId, active) {
   $('#mobThemeChips .mob-theme-chip[data-ecvam="' + layerId + '"]').toggleClass('active', active);
-}
-
-/* ECVAM WMS GetFeatureInfo 등급 조회
- * - CORS 허용 환경에서는 실제 등급 반환
- * - 로컬/CORS 차단 환경에서는 '-' 반환 (비주얼 레이어로 확인) */
-function fetchEcvamGrade(lon, lat, callback) {
-  var delta = 0.0002;
-  var bbox = (lon - delta) + ',' + (lat - delta) + ',' + (lon + delta) + ',' + (lat + delta);
-  var baseParams = '&SERVICE=WMS&VERSION=1.1.0&REQUEST=GetFeatureInfo' +
-    '&STYLES=&SRS=EPSG:4326&BBOX=' + bbox +
-    '&WIDTH=10&HEIGHT=10&X=5&Y=5&FEATURE_COUNT=1';
-
-  var result = { ecvam_gr: '-', bio_gr: '-' };
-  var done = 0;
-
-  function checkDone() { if (++done >= 2) callback(result); }
-
-  function tryGfi(layerId, field, onDone) {
-    $.ajax({
-      url: ECVAM_WMS + '?LAYERS=' + layerId + '&QUERY_LAYERS=' + layerId +
-           '&INFO_FORMAT=application/json' + baseParams,
-      timeout: 4000,
-      success: function(data) {
-        try {
-          var feats = (data && data.features) || [];
-          if (feats.length > 0) {
-            var p = feats[0].properties || {};
-            /* 가능한 속성명 순서대로 시도 */
-            var v = p.grade || p.GRADE || p.pvalue || p.value || p.ecvam_gr ||
-                    p.score || p.SCORE || p.bio_gr || null;
-            if (v !== null && v !== undefined) onDone(String(v));
-            else onDone('-');
-          } else { onDone('-'); }
-        } catch(e) { onDone('-'); }
-      },
-      error: function() { onDone('-'); }
-    });
-  }
-
-  /* 국토환경성평가등급 */
-  tryGfi('nem_ecvam', 'grade', function(v) {
-    result.ecvam_gr = v;
-    checkDone();
-  });
-
-  /* 생태자연도 (nem_eco_01: 다양성 — 생태자연도 기반 항목) */
-  tryGfi('nem_eco_01', 'grade', function(v) {
-    result.bio_gr = v;
-    checkDone();
-  });
-}
-
-/* ECVAM 등급 배지 HTML */
-function ecvamGrBadge(gr) {
-  if (!gr || gr === '-' || gr === 'null') {
-    return '<span style="color:#aaa;font-size:11px;">-</span>';
-  }
-  var cls = 'ecvam-gr' + gr;
-  return '<span class="ecvam-badge ' + cls + '">' + gr + '등급</span>';
-}
-
-/* 기존 카드의 ECVAM 등급 업데이트 (비동기 조회 후) */
-function updateEcvamGradeOnCard(pnu, ecvamResult) {
-  var $card = $('.land-item[data-pnu="' + pnu + '"]');
-  if (!$card.length) return;
-  $card.find('.ecvam-val-ecvam').html(ecvamGrBadge(ecvamResult.ecvam_gr));
-  $card.find('.ecvam-val-bio').html(ecvamGrBadge(ecvamResult.bio_gr));
-  /* collectedLandInfo 업데이트 */
-  var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
-  if (d) { d.ecvam_gr = ecvamResult.ecvam_gr; d.bio_gr = ecvamResult.bio_gr; }
 }
 
 /* ===================================================
@@ -1672,7 +1639,6 @@ function processLandData(data, lon, lat) {
   if (currentMapType === "2d") {
     try {
       var mercCoord = ol.proj.fromLonLat([parcelCenter[0], parcelCenter[1]]);
-      // 모바일: 지도(55vh)와 패널(45vh)이 분리되어 오버랩 없음 → 단순 중앙 이동
       map2d.getView().animate({ center: mercCoord, duration: 400 });
     } catch(e){}
   } else {
@@ -1685,7 +1651,7 @@ function processLandData(data, lon, lat) {
 
   var d = Object.assign({}, best.properties);
 
-  // 용도지역: PIP 우선, 없으면 첫 번째 매칭
+  // 용도지역: PIP 우선
   var uqTypes = ["lt_c_uq111","lt_c_uq112","lt_c_uq113","lt_c_uq114"];
   var uqFeature = null;
   for (var i = 0; i < uqTypes.length && !uqFeature; i++) {
@@ -1697,12 +1663,12 @@ function processLandData(data, lon, lat) {
   }
   d.uname = uqFeature ? (uqFeature.properties.uname || '-') : '-';
 
-  // 지구단위계획구역: PIP
+  // 지구단위계획구역
   var upCands = (data.features||[]).filter(function(f){ return f.id && f.id.toLowerCase().indexOf("lt_c_upisuq161") >= 0; });
   var upF = upCands.find(function(f){ return f.geometry && pointInGeom(lon, lat, f.geometry); }) || null;
   d.dgm_nm = upF ? (upF.properties.dgm_nm || '-') : '-';
 
-  // 공시지가: PIP 우선
+  // 공시지가
   var lpCands = (data.features||[]).filter(function(f){ return f.id && f.id.toLowerCase().indexOf("lp_pa_cbnd_bubun") >= 0; });
   var lpF = lpCands.find(function(f){ return f.geometry && pointInGeom(lon, lat, f.geometry); }) || lpCands[0] || null;
   d.jiga = lpF ? (lpF.properties.jiga || '-') : '-';
@@ -1724,19 +1690,147 @@ function processLandData(data, lon, lat) {
   } else {
     if (currentMapType === "2d") addHighlight2d(best.geometry, d.pnu);
     else addHighlight3d(best.geometry, d.pnu);
-    d.ecvam_gr = '-';
-    d.bio_gr   = '-';
+    
     d._lon = parcelCenter[0];
     d._lat = parcelCenter[1];
-    d._geometry = best.geometry; // 지도 전환 시 하이라이트 복원용
-    addLandInfo(d);        // 카드 즉시 추가 (등급은 '-' 표시 후 업데이트)
+    d._geometry = best.geometry;
+    addLandInfo(d);
     addMarker(lon, lat, d);
     autoOpenMobileSheet();
     showMsg("✅ 토지 정보가 추가되었습니다.", "ok");
-    /* ECVAM 등급 비동기 조회 → 카드 업데이트 */
-    fetchEcvamGrade(lon, lat, function(ecvamResult) {
-      updateEcvamGradeOnCard(d.pnu, ecvamResult);
-    });
+
+    fetchNedInfo(d.pnu);
+  }
+}
+
+/* ===================================================
+   NED API 조회 (소유자, 기타규제사항)
+=================================================== */
+function fetchNedInfo(pnu) {
+  var stdrYear = new Date().getFullYear();
+  
+  // 1. 소유자 정보 조회
+  $.ajax({
+    url: "https://api.vworld.kr/ned/data/getPossessionAttr",
+    data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu, numOfRows: 10, pageNo: 1 },
+    dataType: "jsonp",
+    success: function(data) {
+      var list = [];
+      try {
+        var root = data[Object.keys(data)[0]];
+        var items = root[Object.keys(root).find(function(k){ return Array.isArray(root[k]); })];
+        list = items || [];
+      } catch(e){}
+      
+      var ownNm = "-";
+      if (list.length > 0) {
+        var oc = String(list[0].posesnSeCode || "");
+        ownNm = OWN_NM[oc] || list[0].posesnSeCodeNm || "-";
+      }
+      
+      var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
+      $targets.find('.ned-val-own-nm').text(ownNm);
+      
+      var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+      if (d) { d.own_nm = ownNm; }
+    }
+  });
+
+  // 2. 규제 현황 분석 (제공된 자료 로직 적용)
+  $.ajax({
+    url: "https://api.vworld.kr/ned/data/getLandCharacterAttr",
+    data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu, stdrYear: stdrYear },
+    dataType: "jsonp",
+    success: function(data) {
+      var regs = [];
+      try {
+        var root = data[Object.keys(data)[0]];
+        var items = root[Object.keys(root).find(function(k){ return Array.isArray(root[k]); })];
+        var r = items ? items[0] : {};
+        
+        // 용도지역 외 추가 규제 수집
+        if (r.uzoneDstrcCode1Nm && r.uzoneDstrcCode1Nm !== '-') regs.push({ico:'🗺', label:'용도지구', val: r.uzoneDstrcCode1Nm});
+        if (r.uzoneAreaCodeNm && r.uzoneAreaCodeNm !== '-') regs.push({ico:'🚧', label:'용도구역', val: r.uzoneAreaCodeNm});
+        
+        // 개발제한구역 (GB)
+        var gb = r.grBltAreaAt || r.gbltAreaCode || r.gbltArea;
+        if (gb && gb !== '0' && gb !== 'N') regs.push({ico:'🚫', label:'개발제한', val: '해당 (그린벨트)'});
+        
+        // 농지구분
+        var ag = r.agrLndGrdCodeNm || r.agrLndNm || r.agriNm;
+        if (ag && ag !== '-') regs.push({ico:'🌾', label:'농지구분', val: ag});
+        
+        // 산지구분 (준보전산지, 보전산지 등)
+        var fs = r.frstLndGrdCodeNm || r.forestGrdNm || r.forestNm;
+        if (fs && fs !== '-' && fs !== 'null') regs.push({ico:'🌲', label:'산지구분', val: fs});
+        
+        // 초지구분
+        var gr = r.grassLndGrdCodeNm || r.grassNm;
+        if (gr && gr !== '-') regs.push({ico:'🌿', label:'초지구분', val: gr});
+        
+        // 공법상 제한 및 토지이용상황
+        var re = r.lndUseSittnCodeNm || r.restrictNm || r.lndUseNm;
+        if (re && re !== '-') regs.push({ico:'⚠️', label:'공법상제한', val: re});
+      } catch(e){}
+
+      // 토지이용계획 API로 명칭 기반 규제 보완 조회
+      $.ajax({
+        url: "https://api.vworld.kr/ned/data/getLandUseAttr",
+        data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu },
+        dataType: "jsonp",
+        success: function(ludata) {
+          try {
+            var lroot = ludata[Object.keys(ludata)[0]];
+            var litems = lroot[Object.keys(lroot).find(function(k){ return Array.isArray(lroot[k]); })] || [];
+            litems.forEach(function(li) {
+              var nm = li.prposAreaDstrcCodeNm || li.prposAreaDstrcNm || li.useNm || li.regltNm;
+              if (nm && nm !== '-' && nm !== 'null') {
+                if (!regs.some(function(x){ return x.val === nm; })) {
+                  var cat = categorizeUse(nm);
+                  regs.push({ico: cat.ico || '📌', label: cat.cat || '기타규제', val: nm});
+                }
+              }
+            });
+          } catch(e){}
+
+          var $card = $('.land-item[data-pnu="' + pnu + '"]');
+          var $content = $card.find('.reg-content');
+          $content.empty();
+          if (regs.length > 0) {
+            // 산지 정보를 상단으로 우선 정렬
+            regs.sort(function(a,b){ return (b.val.indexOf('산지') > -1 ? 1 : 0) - (a.val.indexOf('산지') > -1 ? 1 : 0); });
+            
+            regs.forEach(function(item) {
+              $content.append('<div class="reg-list-item">' +
+                '<span class="reg-ico">' + item.ico + '</span>' +
+                '<span class="reg-label">' + item.label + '</span>' +
+                '<span class="reg-val">' + item.val + '</span>' +
+                '</div>');
+            });
+            $card.find('.reg-toggle-btn span:first-child').text('🔍 기타규제사항 (' + regs.length + '건)');
+            var regNames = regs.map(function(x){ return x.val; }).join(", ");
+            $('tr[data-pnu="' + pnu + '"] .ned-val-regs').text(regNames);
+            var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+            if (d) d.other_regs = regNames;
+          } else {
+            $content.append('<div class="reg-list-item" style="color:#aaa;justify-content:center;">특별한 규제 사항이 없습니다.</div>');
+            $card.find('.reg-toggle-btn span:first-child').text('🔍 기타규제사항 (없음)');
+          }
+        }
+      });
+    }
+  });
+}
+
+function toggleRegContent(btn) {
+  var $content = $(btn).next('.reg-content');
+  var $arrow = $(btn).find('.reg-arrow');
+  if ($content.is(':visible')) {
+    $content.slideUp(200);
+    $arrow.text('▼');
+  } else {
+    $content.slideDown(200);
+    $arrow.text('▲');
   }
 }
 
@@ -1765,8 +1859,9 @@ function addLandInfo(d) {
   var areaDisp = (rawArea && !isNaN(rawArea)) ? Math.round(Number(rawArea)).toLocaleString() : '-';
 
   // ── 심플 key:value 카드 (데스크탑용) ──
-  function kv(k, v) {
-    return '<div class="land-kv-row"><span class="land-kv-k">' + escHtml(k) + '</span><span class="land-kv-v">' + escHtml(v || '-') + '</span></div>';
+  function kv(k, v, cls) {
+    var valCls = cls ? ' ' + cls : '';
+    return '<div class="land-kv-row"><span class="land-kv-k">' + escHtml(k) + '</span><span class="land-kv-v' + valCls + '">' + escHtml(v || '-') + '</span></div>';
   }
   var $kv = $('<div class="land-kv"></div>');
   $kv.append('<div class="land-kv-sec">📐 기본정보</div>');
@@ -1777,9 +1872,22 @@ function addLandInfo(d) {
   var _areaNum = parseFloat(rawArea || 0);
   var _jigaTotal = (!isNaN(_jigoNum) && _jigoNum > 0 && !isNaN(_areaNum) && _areaNum > 0) ? Math.round(_areaNum * _jigoNum) : null;
   $kv.append('<div class="land-kv-row"><span class="land-kv-k">토지 공시지가 총액</span><span class="land-kv-v jiga-total-val" data-jiga-raw="' + (_jigaTotal || 0) + '" style="color:#e67e22;font-weight:800;">' + (_jigaTotal ? formatJiga(_jigaTotal) : '-') + '</span></div>');
-  $kv.append('<div class="land-kv-sec">🏗 용도계획</div>');
+  
+  $kv.append('<div class="land-kv-sec">👤 소유정보</div>');
+  $kv.append(kv('소유구분', d.own_nm, 'ned-val-own-nm'));
+
+  $kv.append('<div class="land-kv-sec">🏗 용도 및 규제</div>');
   $kv.append(kv('용도지역', d.uname));
   $kv.append(kv('지구단위계획', d.dgm_nm));
+  
+  // 기타규제사항 토글 섹션 추가
+  var $regSec = $('<div class="reg-sec-wrap"></div>');
+  $regSec.append('<button class="reg-toggle-btn" onclick="toggleRegContent(this)">' +
+    '<span>🔍 기타규제사항 조회 중...</span>' +
+    '<span class="reg-arrow">▼</span></button>');
+  $regSec.append('<div class="reg-content"></div>');
+  $kv.append($regSec);
+
   $item.append($kv);
   $("#landList").append($item);
 
@@ -1792,7 +1900,8 @@ function addLandInfo(d) {
     '<td>' + escHtml(d.jimok || '-') + '</td>' +
     '<td>' + areaDisp + '</td>' +
     '<td>' + escHtml(d.uname || '-') + '</td>' +
-    '<td>' + escHtml(d.dgm_nm || '-') + '</td>' +
+    '<td class="ned-val-own-nm">' + escHtml(d.own_nm || '-') + '</td>' +
+    '<td class="ned-val-regs">' + escHtml(d.other_regs || '-') + '</td>' +
     '<td><button class="mob-del-btn" data-pnu="' + escHtml(d.pnu) + '">삭</button></td>'
   );
   $('#mobLandTbody').append($tr);
@@ -1841,9 +1950,12 @@ function openInNewWindow(pnu) {
     '<tr><td class="sec" colspan="2">💰 공시 정보</td></tr>' +
     '<tr><td>공시지가(원/㎡)</td><td>' + fmt(d.jiga) + '</td></tr>' +
     '<tr><td>토지 공시지가 총액</td><td style="color:#e67e22;font-weight:700;">' + (_jigaTotal2 ? _jigaTotal2.toLocaleString('ko-KR') + ' 원' : '-') + '</td></tr>' +
+    '<tr><td class="sec" colspan="2">👤 소유 정보</td></tr>' +
+    '<tr><td>소유구분</td><td>' + (d.own_nm||'-') + '</td></tr>' +
     '<tr><td class="sec" colspan="2">🏗 용도계획정보</td></tr>' +
     '<tr><td>용도지역</td><td>' + (d.uname||'-') + '</td></tr>' +
     '<tr><td>지구단위계획구역</td><td>' + (d.dgm_nm||'-') + '</td></tr>' +
+    '<tr><td>기타규제사항</td><td>' + (d.other_regs||'-') + '</td></tr>' +
     '</table></div>' +
     '<p class="footer">VWorld API · 토지정보조회시스템 · ' + new Date().toLocaleDateString('ko-KR') + '</p>' +
     '</body></html>';
@@ -2176,8 +2288,10 @@ function openTableWindow() {
       '<td class="ar">' + areaDisp + '</td>' +
       '<td class="ar">' + escHtml(fmt(d.jiga)) + '</td>' +
       '<td class="ar jiga-cell" data-raw="' + jigaRaw + '" style="color:#c0392b;font-weight:700;">' + (jigaRaw > 0 ? jigaRaw.toLocaleString('ko-KR') + ' 원' : '-') + '</td>' +
+      '<td>' + (d.own_nm || '-') + '</td>' +
       '<td>' + escHtml(d.uname || '-') + '</td>' +
       '<td>' + escHtml(d.dgm_nm || '-') + '</td>' +
+      '<td>' + (d.other_regs || '-') + '</td>' +
       '<td><button class="btn-del" onclick="deleteRow(\'' + safePnu + '\',this)">삭제</button></td>' +
     '</tr>';
   }).join('');
@@ -2187,7 +2301,8 @@ function openTableWindow() {
       pnu: d.pnu||'', sido: d.sido_nm||'', sgg: d.sgg_nm||'',
       emd: d.emd_nm||'', ri: d.ri_nm||'', jibun: d.jibun||'',
       jimok: d.jimok||'', area: d.area_||d.parea||'', jiga: d.jiga||'',
-      uname: d.uname||'', dgm_nm: d.dgm_nm||''
+      own_nm: d.own_nm||'',
+      uname: d.uname||'', dgm_nm: d.dgm_nm||'', other_regs: d.other_regs||''
     };
   }));
 
@@ -2249,7 +2364,7 @@ function openTableWindow() {
     '</div>' +
     '<div class="tbl-wrap"><table>' +
     '<thead><tr><th>순번</th><th>주소</th><th>지목</th><th>면적(㎡)</th>' +
-      '<th>공시지가(원/㎡)</th><th>공시지가 총액(원)</th><th>용도지역</th><th>지구단위계획구역</th><th>삭제</th>' +
+      '<th>공시지가(원/㎡)</th><th>공시지가 총액(원)</th><th>소유구분</th><th>용도지역</th><th>지구단위계획구역</th><th>기타규제사항</th><th>삭제</th>' +
     '</tr></thead>' +
     '<tbody id="tbl-body">' + rows + '</tbody>' +
     '<tfoot><tr>' +
@@ -2257,7 +2372,7 @@ function openTableWindow() {
       '<td id="footArea" style="text-align:right;">' + Math.round(totalArea).toLocaleString() + '</td>' +
       '<td></td>' +
       '<td id="footJiga" style="text-align:right;color:#c0392b;font-weight:700;">' + totalJigaWin.toLocaleString('ko-KR') + ' 원</td>' +
-      '<td colspan="3"></td>' +
+      '<td colspan="5"></td>' +
     '</tr></tfoot>' +
     '</table></div>' +
     '<div class="foot">토지정보 조회 시스템 &nbsp;·&nbsp; ' + new Date().toLocaleDateString('ko-KR') + '</div>' +
@@ -2324,17 +2439,17 @@ function openTableWindow() {
     '}' +
     'function exportCSV(){' +
     '  var fmt=function(v){return(v&&!isNaN(v))?Number(v).toLocaleString():(v||"");};' +
-    '  var csv="\\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),공시지가 총액(원),용도지역,지구단위계획구역\\n";' +
+    '  var csv="\\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),공시지가 총액(원),소유구분,소유자수,용도지역,지구단위계획구역,상세규제\\n";' +
     '  var tot=0,jigaTot=0;' +
     '  _data.forEach(function(d,i){' +
     '    var a=parseFloat(d.area||0);if(!isNaN(a))tot+=a;' +
     '    var j=parseFloat(String(d.jiga||"").replace(/,/g,""));' +
     '    var jt=(!isNaN(a)&&a>0&&!isNaN(j)&&j>0)?Math.round(a*j):0;' +
     '    if(jt>0)jigaTot+=jt;' +
-    '    csv+=[i+1,\'="\'+d.pnu+\'"\',d.sido,d.sgg,d.emd,d.ri,d.jibun,d.jimok,fmt(d.area),fmt(d.jiga),jt>0?jt.toLocaleString():"",d.uname,d.dgm_nm' +
+    '    csv+=[i+1,\'="\'+d.pnu+\'"\',d.sido,d.sgg,d.emd,d.ri,d.jibun,d.jimok,fmt(d.area),fmt(d.jiga),jt>0?jt.toLocaleString():"",d.own_nm,d.uname,d.dgm_nm,d.other_regs' +
     '    ].map(function(f){return\'"\'+String(f).replace(/"/g,\'""\')+\'"\';}).join(",")+\"\\n\";' +
     '  });' +
-    '  csv+=\'"\'+_data.length+\'필지 합계","","","","","","","","\'+Math.round(tot).toLocaleString()+\'","","\'+jigaTot.toLocaleString()+\'","",""\'+\"\\n\";' +
+    '  csv+=\'"\'+_data.length+\'필지 합계","","","","","","","","\'+Math.round(tot).toLocaleString()+\'","","\'+(jigaTot > 0 ? jigaTot.toLocaleString() : "")+\'","","","",""\'+\"\\n\";' +
     '  var b=new Blob([csv],{type:"text/csv;charset=utf-8"});' +
     '  var u=URL.createObjectURL(b);' +
     '  var a=document.createElement("a");a.href=u;a.download="토지조서_'+new Date().toISOString().slice(0,10)+'.csv";' +
@@ -2354,7 +2469,7 @@ function openTableWindow() {
 function exportToCSV() {
   if (!collectedLandInfo.length) { showMsg("내보낼 데이터가 없습니다.", "err"); return; }
   var fmt = function(v){ return (v && !isNaN(v)) ? Number(v).toLocaleString() : (v||''); };
-  var csv = "\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),공시지가 소계(원),용도지역,지구단위계획구역,국토환경성평가등급,생태자연도등급\n";
+  var csv = "\uFEFF순번,필지번호(PNU),시도,시군구,읍면동,리,지번,지목,면적(㎡),공시지가(원/㎡),공시지가 소계(원),소유구분,용도지역,지구단위계획구역,기타규제사항\n";
   var totalArea = 0, totalJigaCSV = 0;
   collectedLandInfo.forEach(function(d, idx) {
     var area = parseFloat(d.area_ || d.parea || 0);
@@ -2370,8 +2485,8 @@ function exportToCSV() {
       fmt(d.area_||d.parea),
       fmt(d.jiga),
       jigaSub > 0 ? jigaSub.toLocaleString() : '',
-      d.uname||'', d.dgm_nm||'',
-      d.ecvam_gr||'', d.bio_gr||''
+      d.own_nm||'',
+      d.uname||'', d.dgm_nm||'', d.other_regs||''
     ].map(function(f){ return '"' + String(f).replace(/"/g,'""') + '"'; }).join(',') + '\n';
   });
   // 합계 행 (15컬럼)

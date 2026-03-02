@@ -1,0 +1,21 @@
+.firebaserc
+.gitignore
+.idx/dev.nix
+.idx/mcp.json
+.vscode/settings.json
+GEMINI.md
+ads.txt
+blueprint.md
+config.js
+firebase.json
+"index - \353\263\265\354\202\254\353\263\270.html"
+index.html
+index_260301.html
+main.js
+proxy.js
+proxy.py
+robots.txt
+style.css
+"\355\206\240\354\247\200\354\240\225\353\263\264_rev01.html"
+"\355\206\240\354\247\200\354\240\225\353\263\264_rev02 - \353\263\265\354\202\254\353\263\270.html"
+"\355\206\240\354\247\200\354\240\225\353\263\264_rev03.html"

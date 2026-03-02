@@ -2,7 +2,7 @@
 <html style="height:100%;margin:0;padding:0;">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <meta name="robots" content="noindex, noarchive, nosnippet"/>
 <meta name="google-adsense-account" content="ca-pub-4187457564577316">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4187457564577316" crossorigin="anonymous"></script>
@@ -223,6 +223,8 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     background:#f4f6fb;
     overflow:hidden;
     transition:transform .3s cubic-bezier(.25,.8,.25,1);
+    /* 모바일 하단 버튼 가림 방지 (Safe Area 적용) */
+    padding-bottom: calc(env(safe-area-inset-bottom) + 15px);
   }
   /* 패널 숨기기 (핸들만 노출 - 선택적) */
   .side.sheet-collapsed{

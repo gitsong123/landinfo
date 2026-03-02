@@ -1,7 +1,7 @@
 {
   "name": "토지정보 조회 시스템",
   "short_name": "토지정보",
-  "start_url": "/index.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3a7bd5",

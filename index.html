@@ -714,6 +714,17 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 
 <script>
 /* ===================================================
+   Service Worker 등록 (PWA 실행을 위해 필수)
+=================================================== */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW Registered', reg))
+      .catch(err => console.log('SW Error', err));
+  });
+}
+
+/* ===================================================
    전역 변수
 =================================================== */
 var apiKey = "A12CEDAE-86F1-3453-BC92-3FD98BE14103";

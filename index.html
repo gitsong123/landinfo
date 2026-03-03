@@ -308,6 +308,18 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     flex-direction: column;
   }
 
+  /* 모바일 버전 정보 스타일 */
+  .mob-ver-info {
+    display: block !important;
+    padding: 10px 14px;
+    font-size: 10px;
+    color: #999;
+    text-align: right;
+    background: #f4f6fb;
+    border-top: 1px dashed #ddd;
+    order: 95;
+  }
+
   /* ── 모바일: 카드 숨기고 테이블만 표시 ── */
   .land-item{display:none!important;}
   .land-item-hd{display:none!important;}
@@ -528,9 +540,16 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
       <div class="mob-theme-chips" id="mobThemeChips"></div>
     </div>
 
-    <div class="footer">© 2025 토지정보조회시스템 · Powered by VWorld API</div>
+    <div class="footer">
+      © 2025 토지정보조회시스템 · Powered by VWorld API<br>
+      <span style="opacity:0.7;">v3.0.1 (Last Modified: 2026-03-03)</span>
+    </div>
     <!-- 모바일 하단 주소창 가림 방지를 위한 물리적 공간 확보 (약 7줄 여백) -->
     <div class="mob-bottom-spacer" style="display:none; height:200px; flex-shrink:0;"></div>
+    <!-- 모바일 전용 버전 표시 (패널 내 하단) -->
+    <div style="display:none;" class="mob-ver-info">
+      v3.0.1 (Update: 2026-03-03)
+    </div>
   </div>
 </div>
 

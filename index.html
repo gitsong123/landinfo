@@ -542,13 +542,13 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 
     <div class="footer">
       © 2025 토지정보조회시스템 · Powered by VWorld API<br>
-      <span style="opacity:0.7;">v3.0.2 (Last Modified: 2026-03-03)</span>
+      <span style="opacity:0.7;">v3.0.3 (Last Modified: 2026-03-03)</span>
     </div>
     <!-- 모바일 하단 주소창 가림 방지를 위한 물리적 공간 확보 (약 7줄 여백) -->
     <div class="mob-bottom-spacer" style="display:none; height:200px; flex-shrink:0;"></div>
     <!-- 모바일 전용 버전 표시 (패널 내 하단) -->
     <div style="display:none;" class="mob-ver-info">
-      v3.0.2 (Update: 2026-03-03)
+      v3.0.3 (Update: 2026-03-03)
     </div>
   </div>
 </div>
@@ -1698,7 +1698,7 @@ function fetchNedInfo(pnu) {
     }
   });
 
-  // 2. 토지특성정보 조회 (용도지역명 정밀 추출)
+  // 2. 토지특성정보 조회 (용도지역명 1차 추출)
   $.ajax({
     url: "https://api.vworld.kr/ned/data/getLandCharacterAttr",
     data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu, stdrYear: stdrYear },
@@ -1708,37 +1708,41 @@ function fetchNedInfo(pnu) {
         var croot = cdata[Object.keys(cdata)[0]];
         var citems = croot[Object.keys(croot).find(function(k){ return Array.isArray(croot[k]); })];
         var info = citems ? citems[0] : null;
-        if (info) {
-          // 용도지역명 보정 (예: 제3종일반주거지역 등)
-          var unameNed = info.uzoneAreaCodeNm || "-";
-          if (unameNed !== "-") {
-            var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
-            $targets.find('.ned-val-uname').text(unameNed);
-            
-            var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
-            if (d) { d.uname = unameNed; }
-          }
+        if (info && info.uzoneAreaCodeNm && info.uzoneAreaCodeNm !== '-') {
+          updateUname(pnu, info.uzoneAreaCodeNm);
         }
       } catch(e){}
     }
   });
 
-  // 3. 토지이용계획 (상세규제사항) 조회
+  // 3. 토지이용계획 (상세규제사항) 조회 및 용도지역 정밀 분석
   $.ajax({
     url: "https://api.vworld.kr/ned/data/getLandUseAttr",
     data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu },
     dataType: "jsonp",
     success: function(data) {
       var regs = [];
+      var detectedUname = null;
       try {
         var root = data[Object.keys(data)[0]];
         var items = root[Object.keys(root).find(function(k){ return Array.isArray(root[k]); })] || [];
         items.forEach(function(r) {
           var nm = r.prposAreaDstrcCodeNm || r.prposAreaDstrcNm || r.uDistrictNm;
-          if (nm && nm !== '-' && regs.indexOf(nm) === -1) regs.push(nm);
+          if (nm && nm !== '-' && regs.indexOf(nm) === -1) {
+            regs.push(nm);
+            // 핵심 용도지역 키워드 탐지 (도시지역, 주거지역, 상업지역 등)
+            if (!detectedUname && (nm.indexOf('주거지역') >= 0 || nm.indexOf('상업지역') >= 0 || nm.indexOf('공업지역') >= 0 || nm.indexOf('녹지지역') >= 0 || nm.indexOf('도시지역') >= 0)) {
+              detectedUname = nm;
+            }
+          }
         });
       } catch(e){}
       
+      // 상세 규제사항에서 찾은 용도지역으로 UI 업데이트
+      if (detectedUname) {
+        updateUname(pnu, detectedUname);
+      }
+
       var regText = regs.length > 0 ? regs.join(", ") : "특별 규제 없음";
       var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
       $targets.find('.ned-val-regs').text(regText);
@@ -1747,6 +1751,13 @@ function fetchNedInfo(pnu) {
       if (d) { d.other_regs = regText; }
     }
   });
+}
+
+function updateUname(pnu, uname) {
+  var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
+  $targets.find('.ned-val-uname').text(uname);
+  var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+  if (d) { d.uname = uname; }
 }
 
 /* ===================================================
@@ -2565,7 +2576,7 @@ function fetchNedInfo(pnu) {
     }
   });
 
-  // 2. 토지특성정보 조회 (용도지역명 정밀 추출)
+  // 2. 토지특성정보 조회 (용도지역명 1차 추출)
   $.ajax({
     url: "https://api.vworld.kr/ned/data/getLandCharacterAttr",
     data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu, stdrYear: stdrYear },
@@ -2575,37 +2586,41 @@ function fetchNedInfo(pnu) {
         var croot = cdata[Object.keys(cdata)[0]];
         var citems = croot[Object.keys(croot).find(function(k){ return Array.isArray(croot[k]); })];
         var info = citems ? citems[0] : null;
-        if (info) {
-          // 용도지역명 보정 (예: 제3종일반주거지역 등)
-          var unameNed = info.uzoneAreaCodeNm || "-";
-          if (unameNed !== "-") {
-            var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
-            $targets.find('.ned-val-uname').text(unameNed);
-            
-            var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
-            if (d) { d.uname = unameNed; }
-          }
+        if (info && info.uzoneAreaCodeNm && info.uzoneAreaCodeNm !== '-') {
+          updateUname(pnu, info.uzoneAreaCodeNm);
         }
       } catch(e){}
     }
   });
 
-  // 3. 토지이용계획 (상세규제사항) 조회
+  // 3. 토지이용계획 (상세규제사항) 조회 및 용도지역 정밀 분석
   $.ajax({
     url: "https://api.vworld.kr/ned/data/getLandUseAttr",
     data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu },
     dataType: "jsonp",
     success: function(data) {
       var regs = [];
+      var detectedUname = null;
       try {
         var root = data[Object.keys(data)[0]];
         var items = root[Object.keys(root).find(function(k){ return Array.isArray(root[k]); })] || [];
         items.forEach(function(r) {
           var nm = r.prposAreaDstrcCodeNm || r.prposAreaDstrcNm || r.uDistrictNm;
-          if (nm && nm !== '-' && regs.indexOf(nm) === -1) regs.push(nm);
+          if (nm && nm !== '-' && regs.indexOf(nm) === -1) {
+            regs.push(nm);
+            // 핵심 용도지역 키워드 탐지 (도시지역, 주거지역, 상업지역 등)
+            if (!detectedUname && (nm.indexOf('주거지역') >= 0 || nm.indexOf('상업지역') >= 0 || nm.indexOf('공업지역') >= 0 || nm.indexOf('녹지지역') >= 0 || nm.indexOf('도시지역') >= 0)) {
+              detectedUname = nm;
+            }
+          }
         });
       } catch(e){}
       
+      // 상세 규제사항에서 찾은 용도지역으로 UI 업데이트
+      if (detectedUname) {
+        updateUname(pnu, detectedUname);
+      }
+
       var regText = regs.length > 0 ? regs.join(", ") : "특별 규제 없음";
       var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
       $targets.find('.ned-val-regs').text(regText);
@@ -2614,6 +2629,13 @@ function fetchNedInfo(pnu) {
       if (d) { d.other_regs = regText; }
     }
   });
+}
+
+function updateUname(pnu, uname) {
+  var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
+  $targets.find('.ned-val-uname').text(uname);
+  var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+  if (d) { d.uname = uname; }
 }
 </script>
 </body>

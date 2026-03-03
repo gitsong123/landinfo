@@ -542,13 +542,13 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 
     <div class="footer">
       © 2025 토지정보조회시스템 · Powered by VWorld API<br>
-      <span style="opacity:0.7;">v3.0.1 (Last Modified: 2026-03-03)</span>
+      <span style="opacity:0.7;">v3.0.2 (Last Modified: 2026-03-03)</span>
     </div>
     <!-- 모바일 하단 주소창 가림 방지를 위한 물리적 공간 확보 (약 7줄 여백) -->
     <div class="mob-bottom-spacer" style="display:none; height:200px; flex-shrink:0;"></div>
     <!-- 모바일 전용 버전 표시 (패널 내 하단) -->
     <div style="display:none;" class="mob-ver-info">
-      v3.0.1 (Update: 2026-03-03)
+      v3.0.2 (Update: 2026-03-03)
     </div>
   </div>
 </div>
@@ -1665,7 +1665,7 @@ function processLandData(data, lon, lat) {
 }
 
 /* ===================================================
-   NED API 조회 (소유자, 상세규제)
+   NED API 조회 (소유자, 상세규제, 용도지역 보정)
 =================================================== */
 function fetchNedInfo(pnu) {
   var stdrYear = new Date().getFullYear();
@@ -1698,7 +1698,32 @@ function fetchNedInfo(pnu) {
     }
   });
 
-  // 2. 기타 규제 및 용도 (토지이용계획) 조회
+  // 2. 토지특성정보 조회 (용도지역명 정밀 추출)
+  $.ajax({
+    url: "https://api.vworld.kr/ned/data/getLandCharacterAttr",
+    data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu, stdrYear: stdrYear },
+    dataType: "jsonp",
+    success: function(cdata) {
+      try {
+        var croot = cdata[Object.keys(cdata)[0]];
+        var citems = croot[Object.keys(croot).find(function(k){ return Array.isArray(croot[k]); })];
+        var info = citems ? citems[0] : null;
+        if (info) {
+          // 용도지역명 보정 (예: 제3종일반주거지역 등)
+          var unameNed = info.uzoneAreaCodeNm || "-";
+          if (unameNed !== "-") {
+            var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
+            $targets.find('.ned-val-uname').text(unameNed);
+            
+            var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+            if (d) { d.uname = unameNed; }
+          }
+        }
+      } catch(e){}
+    }
+  });
+
+  // 3. 토지이용계획 (상세규제사항) 조회
   $.ajax({
     url: "https://api.vworld.kr/ned/data/getLandUseAttr",
     data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu },
@@ -1714,30 +1739,12 @@ function fetchNedInfo(pnu) {
         });
       } catch(e){}
       
-      $.ajax({
-        url: "https://api.vworld.kr/ned/data/getLandCharacterAttr",
-        data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu, stdrYear: stdrYear },
-        dataType: "jsonp",
-        success: function(cdata) {
-          try {
-            var croot = cdata[Object.keys(cdata)[0]];
-            var citems = croot[Object.keys(croot).find(function(k){ return Array.isArray(croot[k]); })];
-            var info = citems ? citems[0] : null;
-            if (info) {
-              if (info.uzoneAreaCodeNm && info.uzoneAreaCodeNm !== '-' && regs.indexOf(info.uzoneAreaCodeNm) === -1) regs.push(info.uzoneAreaCodeNm);
-              if (info.agrLndGrdCodeNm && info.agrLndGrdCodeNm !== '-' && regs.indexOf(info.agrLndGrdCodeNm) === -1) regs.push("농지:" + info.agrLndGrdCodeNm);
-              if (info.frstLndGrdCodeNm && info.frstLndGrdCodeNm !== '-' && regs.indexOf(info.frstLndGrdCodeNm) === -1) regs.push("산지:" + info.frstLndGrdCodeNm);
-            }
-          } catch(e){}
-
-          var regText = regs.length > 0 ? regs.join(", ") : "특별 규제 없음";
-          var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
-          $targets.find('.ned-val-regs').text(regText);
-          
-          var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
-          if (d) { d.other_regs = regText; }
-        }
-      });
+      var regText = regs.length > 0 ? regs.join(", ") : "특별 규제 없음";
+      var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
+      $targets.find('.ned-val-regs').text(regText);
+      
+      var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+      if (d) { d.other_regs = regText; }
     }
   });
 }
@@ -1784,7 +1791,7 @@ function addLandInfo(d) {
   $kv.append(kv('소유구분', d.own_nm, 'ned-val-own-nm'));
 
   $kv.append('<div class="land-kv-sec">🏗 용도 및 규제</div>');
-  $kv.append(kv('용도지역', d.uname));
+  $kv.append(kv('용도지역', d.uname, 'ned-val-uname'));
   $kv.append(kv('지구단위계획', d.dgm_nm));
   $kv.append(kv('기타규제사항', d.other_regs, 'ned-val-regs'));
 
@@ -1798,7 +1805,7 @@ function addLandInfo(d) {
     '<td style="text-align:left;padding-left:8px">' + addrShort + '</td>' +
     '<td>' + escHtml(d.jimok || '-') + '</td>' +
     '<td>' + areaDisp + '</td>' +
-    '<td>' + escHtml(d.uname || '-') + '</td>' +
+    '<td class="ned-val-uname">' + escHtml(d.uname || '-') + '</td>' +
     '<td class="ned-val-own-nm">' + escHtml(d.own_nm || '-') + '</td>' +
     '<td class="ned-val-regs">' + escHtml(d.other_regs || '-') + '</td>' +
     '<td><button class="mob-del-btn" data-pnu="' + escHtml(d.pnu) + '">삭</button></td>'
@@ -1854,7 +1861,7 @@ function openInNewWindow(pnu) {
     '<tr><td class="sec" colspan="2">🏗 용도계획정보</td></tr>' +
     '<tr><td>용도지역</td><td>' + (d.uname||'-') + '</td></tr>' +
     '<tr><td>지구단위계획구역</td><td>' + (d.dgm_nm||'-') + '</td></tr>' +
-    '<tr><td></td><td>' + (d.other_regs||'-') + '</td></tr>' +
+    '<tr><td>기타규제사항</td><td>' + (d.other_regs||'-') + '</td></tr>' +
     '</table></div>' +
     '<p class="footer">VWorld API · 토지정보조회시스템 · ' + new Date().toLocaleDateString('ko-KR') + '</p>' +
     '</body></html>';
@@ -2523,6 +2530,91 @@ window.openHelp = function() { document.getElementById('helpModal').classList.ad
 window.closeHelp = function() { document.getElementById('helpModal').classList.remove('open'); document.body.style.overflow=''; };
 window.closeHelpOutside = function(e) { if (e.target.id === 'helpModal') window.closeHelp(); };
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') window.closeHelp(); });
+
+/* ===================================================
+   NED API 조회 (소유자, 상세규제, 용도지역 보정)
+=================================================== */
+function fetchNedInfo(pnu) {
+  var stdrYear = new Date().getFullYear();
+  
+  // 1. 소유자 정보 조회
+  $.ajax({
+    url: "https://api.vworld.kr/ned/data/getPossessionAttr",
+    data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu, numOfRows: 10, pageNo: 1 },
+    dataType: "jsonp",
+    success: function(data) {
+      var list = [];
+      try {
+        var root = data[Object.keys(data)[0]];
+        var items = root[Object.keys(root).find(function(k){ return Array.isArray(root[k]); })];
+        list = items || [];
+      } catch(e){}
+      
+      var ownNm = "-";
+      if (list.length > 0) {
+        var oc = String(list[0].posesnSeCode || "");
+        var OWN_NM_MAP = {'0':'일본인·창씨명','1':'개인','2':'국유지','3':'외국인','4':'시·도유지','5':'군유지','6':'법인','7':'종중','8':'종교단체','9':'기타단체'};
+        ownNm = OWN_NM_MAP[oc] || list[0].posesnSeCodeNm || "-";
+      }
+      
+      var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
+      $targets.find('.ned-val-own-nm').text(ownNm);
+      
+      var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+      if (d) { d.own_nm = ownNm; }
+    }
+  });
+
+  // 2. 토지특성정보 조회 (용도지역명 정밀 추출)
+  $.ajax({
+    url: "https://api.vworld.kr/ned/data/getLandCharacterAttr",
+    data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu, stdrYear: stdrYear },
+    dataType: "jsonp",
+    success: function(cdata) {
+      try {
+        var croot = cdata[Object.keys(cdata)[0]];
+        var citems = croot[Object.keys(croot).find(function(k){ return Array.isArray(croot[k]); })];
+        var info = citems ? citems[0] : null;
+        if (info) {
+          // 용도지역명 보정 (예: 제3종일반주거지역 등)
+          var unameNed = info.uzoneAreaCodeNm || "-";
+          if (unameNed !== "-") {
+            var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
+            $targets.find('.ned-val-uname').text(unameNed);
+            
+            var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+            if (d) { d.uname = unameNed; }
+          }
+        }
+      } catch(e){}
+    }
+  });
+
+  // 3. 토지이용계획 (상세규제사항) 조회
+  $.ajax({
+    url: "https://api.vworld.kr/ned/data/getLandUseAttr",
+    data: { key: apiKey, domain: window.location.hostname || "localhost", format: "json", pnu: pnu },
+    dataType: "jsonp",
+    success: function(data) {
+      var regs = [];
+      try {
+        var root = data[Object.keys(data)[0]];
+        var items = root[Object.keys(root).find(function(k){ return Array.isArray(root[k]); })] || [];
+        items.forEach(function(r) {
+          var nm = r.prposAreaDstrcCodeNm || r.prposAreaDstrcNm || r.uDistrictNm;
+          if (nm && nm !== '-' && regs.indexOf(nm) === -1) regs.push(nm);
+        });
+      } catch(e){}
+      
+      var regText = regs.length > 0 ? regs.join(", ") : "특별 규제 없음";
+      var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
+      $targets.find('.ned-val-regs').text(regText);
+      
+      var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+      if (d) { d.other_regs = regText; }
+    }
+  });
+}
 </script>
 </body>
 </html>

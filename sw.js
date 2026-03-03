@@ -1,4 +1,4 @@
-const CACHE_NAME = 'landinfo-v2';
+const CACHE_NAME = 'landinfo-v3';
 const ASSETS = [
   '/',
   '/index.html',

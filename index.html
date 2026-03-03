@@ -542,13 +542,13 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 
     <div class="footer">
       © 2025 토지정보조회시스템 · Powered by VWorld API<br>
-      <span style="opacity:0.7;">v3.0.3 (Last Modified: 2026-03-03)</span>
+      <span style="opacity:0.7;">v3.0.4 (Last Modified: 2026-03-03)</span>
     </div>
     <!-- 모바일 하단 주소창 가림 방지를 위한 물리적 공간 확보 (약 7줄 여백) -->
     <div class="mob-bottom-spacer" style="display:none; height:200px; flex-shrink:0;"></div>
     <!-- 모바일 전용 버전 표시 (패널 내 하단) -->
     <div style="display:none;" class="mob-ver-info">
-      v3.0.3 (Update: 2026-03-03)
+      v3.0.4 (Update: 2026-03-03)
     </div>
   </div>
 </div>
@@ -1722,7 +1722,7 @@ function fetchNedInfo(pnu) {
     dataType: "jsonp",
     success: function(data) {
       var regs = [];
-      var detectedUname = null;
+      var bestUname = null;
       try {
         var root = data[Object.keys(data)[0]];
         var items = root[Object.keys(root).find(function(k){ return Array.isArray(root[k]); })] || [];
@@ -1730,17 +1730,22 @@ function fetchNedInfo(pnu) {
           var nm = r.prposAreaDstrcCodeNm || r.prposAreaDstrcNm || r.uDistrictNm;
           if (nm && nm !== '-' && regs.indexOf(nm) === -1) {
             regs.push(nm);
-            // 핵심 용도지역 키워드 탐지 (도시지역, 주거지역, 상업지역 등)
-            if (!detectedUname && (nm.indexOf('주거지역') >= 0 || nm.indexOf('상업지역') >= 0 || nm.indexOf('공업지역') >= 0 || nm.indexOf('녹지지역') >= 0 || nm.indexOf('도시지역') >= 0)) {
-              detectedUname = nm;
+            
+            // 상세 용도지역 추출 로직 강화
+            if (nm.endsWith('지역')) {
+              if (nm === '도시지역') {
+                if (!bestUname) bestUname = nm; // 가장 낮은 순위로 저장
+              } else if (nm.indexOf('주거') >= 0 || nm.indexOf('상업') >= 0 || nm.indexOf('공업') >= 0 || nm.indexOf('녹지') >= 0 || nm.indexOf('관리') >= 0 || nm.indexOf('농림') >= 0 || nm.indexOf('보전') >= 0) {
+                bestUname = nm; // 상세 분류 발견 시 확정 (루프를 계속 돌며 마지막 상세 지역 선택)
+              }
             }
           }
         });
       } catch(e){}
       
-      // 상세 규제사항에서 찾은 용도지역으로 UI 업데이트
-      if (detectedUname) {
-        updateUname(pnu, detectedUname);
+      // 발견된 상세 용도지역이 있으면 업데이트
+      if (bestUname) {
+        updateUname(pnu, bestUname);
       }
 
       var regText = regs.length > 0 ? regs.join(", ") : "특별 규제 없음";
@@ -1872,7 +1877,7 @@ function openInNewWindow(pnu) {
     '<tr><td class="sec" colspan="2">🏗 용도계획정보</td></tr>' +
     '<tr><td>용도지역</td><td>' + (d.uname||'-') + '</td></tr>' +
     '<tr><td>지구단위계획구역</td><td>' + (d.dgm_nm||'-') + '</td></tr>' +
-    '<tr><td>기타규제사항</td><td>' + (d.other_regs||'-') + '</td></tr>' +
+    '<tr><td></td><td>' + (d.other_regs||'-') + '</td></tr>' +
     '</table></div>' +
     '<p class="footer">VWorld API · 토지정보조회시스템 · ' + new Date().toLocaleDateString('ko-KR') + '</p>' +
     '</body></html>';
@@ -2600,7 +2605,7 @@ function fetchNedInfo(pnu) {
     dataType: "jsonp",
     success: function(data) {
       var regs = [];
-      var detectedUname = null;
+      var bestUname = null;
       try {
         var root = data[Object.keys(data)[0]];
         var items = root[Object.keys(root).find(function(k){ return Array.isArray(root[k]); })] || [];
@@ -2608,17 +2613,22 @@ function fetchNedInfo(pnu) {
           var nm = r.prposAreaDstrcCodeNm || r.prposAreaDstrcNm || r.uDistrictNm;
           if (nm && nm !== '-' && regs.indexOf(nm) === -1) {
             regs.push(nm);
-            // 핵심 용도지역 키워드 탐지 (도시지역, 주거지역, 상업지역 등)
-            if (!detectedUname && (nm.indexOf('주거지역') >= 0 || nm.indexOf('상업지역') >= 0 || nm.indexOf('공업지역') >= 0 || nm.indexOf('녹지지역') >= 0 || nm.indexOf('도시지역') >= 0)) {
-              detectedUname = nm;
+            
+            // 상세 용도지역 추출 로직 강화
+            if (nm.endsWith('지역')) {
+              if (nm === '도시지역') {
+                if (!bestUname) bestUname = nm; // 가장 낮은 순위로 저장
+              } else if (nm.indexOf('주거') >= 0 || nm.indexOf('상업') >= 0 || nm.indexOf('공업') >= 0 || nm.indexOf('녹지') >= 0 || nm.indexOf('관리') >= 0 || nm.indexOf('농림') >= 0 || nm.indexOf('보전') >= 0) {
+                bestUname = nm; // 상세 분류 발견 시 확정
+              }
             }
           }
         });
       } catch(e){}
       
-      // 상세 규제사항에서 찾은 용도지역으로 UI 업데이트
-      if (detectedUname) {
-        updateUname(pnu, detectedUname);
+      // 발견된 상세 용도지역이 있으면 업데이트
+      if (bestUname) {
+        updateUname(pnu, bestUname);
       }
 
       var regText = regs.length > 0 ? regs.join(", ") : "특별 규제 없음";

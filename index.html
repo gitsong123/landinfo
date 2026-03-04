@@ -24,7 +24,50 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"/>
+<link rel="stylesheet" href="style.css"/>
 <script src="https://ecvam.neins.go.kr/apiConfirm.do?APIKEY=MUTW-PGHX-76CT-ENMD"></script>
+<style>
+/* 탭 바 스타일 */
+.nav-bar{position:fixed;bottom:0;left:0;right:0;height:60px;background:#fff;display:flex;border-top:1px solid #ddd;z-index:10001;box-shadow:0 -2px 10px rgba(0,0,0,0.1);}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;cursor:pointer;font-size:11px;font-weight:600;}
+.nav-item.active{color:#3a7bd5;}
+.nav-item i{font-size:20px;margin-bottom:2px;}
+
+/* 커뮤니티 영역 */
+#communityArea{display:none;position:fixed;top:0;left:0;right:0;bottom:60px;background:#f4f6fb;z-index:10000;overflow-y:auto;padding-bottom:20px;}
+.comm-header{background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;padding:20px;position:sticky;top:0;z-index:10;}
+.comm-header h2{margin:0;font-size:20px;}
+.comm-container{max-width:800px;margin:0 auto;padding:15px;}
+
+/* 게시글 스타일 */
+.post-card{background:#fff;border-radius:12px;padding:15px;margin-bottom:15px;box-shadow:0 2px 8px rgba(0,0,0,0.05);position:relative;}
+.post-header{display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;color:#888;}
+.post-title{font-size:16px;font-weight:700;color:#333;margin-bottom:8px;}
+.post-content{font-size:14px;color:#555;line-height:1.5;white-space:pre-wrap;}
+.post-footer{margin-top:12px;padding-top:10px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;}
+.post-del-btn{color:#e74c3c;cursor:pointer;font-size:12px;font-weight:700;}
+
+/* 버튼 및 폼 */
+.btn-primary{background:#3a7bd5;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;width:100%;margin-top:10px;}
+.write-btn-fixed{position:fixed;bottom:80px;right:20px;width:56px;height:56px;background:#3a7bd5;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 12px rgba(0,0,0,0.2);cursor:pointer;z-index:10001;border:none;}
+
+/* 모달 스타일 */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:20000;align-items:center;justify-content:center;padding:20px;}
+.modal-box{background:#fff;border-radius:16px;width:100%;max-width:400px;padding:25px;box-shadow:0 10px 40px rgba(0,0,0,0.2);}
+.modal-box h3{margin-top:0;margin-bottom:20px;color:#333;}
+.form-group{margin-bottom:15px;}
+.form-group label{display:block;font-size:12px;color:#777;margin-bottom:5px;}
+.form-group input,.form-group textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;outline:none;}
+.modal-close{float:right;cursor:pointer;font-size:20px;color:#999;}
+
+/* 로그인 정보 바 */
+.auth-bar{padding:10px 15px;background:#fff;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;font-size:12px;}
+.auth-btn{color:#3a7bd5;font-weight:700;cursor:pointer;}
+
+@media(max-width:768px){
+  #communityArea{bottom:60px;}
+}
+</style>
 <style>
 *{box-sizing:border-box;}
 html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;font-size:13px;}
@@ -263,11 +306,10 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   .opt-table,.footer{display:none!important;}
 
   /* 주제도 패널: 모바일 컴팩트 */
-  .theme-panel{padding:3px 8px;border-bottom:1px solid #e0e4f0;order:10;}
+  .theme-panel{padding:3px 8px;border-bottom:1px solid #e0e4f0;order:10;background:#fff;}
   .theme-hd-title{font-size:11px;}
   .toggle-btn{padding:2px 7px;font-size:10px;}
-  #themeList{max-height:90px;}
-  #ecvamThemeList{max-height:90px;}
+  #themeList, #ecvamThemeList{max-height:150px !important; overflow-y:auto !important; -webkit-overflow-scrolling:touch;}
   .theme-item{padding:2px 2px;}
   .theme-item label{font-size:11px;}
   .ecvam-legend{padding:2px 8px 4px;}
@@ -400,156 +442,266 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   <!-- 사이드 패널 -->
   <div class="side" id="sidePanel">
 
-    <!-- 모바일 bottom sheet 핸들 -->
-    <div class="sheet-pull" id="sheetPull" onclick="toggleMobileSheet()">
-      <div class="sheet-pull-bar"></div>
-      <span class="sheet-pull-label" id="sheetPullLabel">토지정보를 클릭하여 조회하세요</span>
-      <span class="sheet-pull-toggle" id="sheetPullToggle">▼</span>
+    <!-- 로그인 정보 바 -->
+    <div class="auth-bar" id="authBar">
+      <span id="userStatus">로그인이 필요합니다</span>
+      <span class="auth-btn" id="loginBtn" onclick="openLoginModal()">로그인</span>
     </div>
 
-    <!-- 헤더 -->
-    <div class="hd" style="position:relative;">
-      <h1>🏛 토지정보 조회 시스템</h1>
-      <p>VWorld API 기반 지적정보 · 용도지역 · 지구단위 · 규제현황 조회</p>
-      <button class="help-btn" onclick="openHelp()" title="사용설명서">?</button>
+    <!-- 탭 메뉴 추가 -->
+    <div style="display:flex; background:#fff; border-bottom:1px solid #dde1f0;">
+      <button id="tabLandBtn" class="active-tab" style="flex:1; padding:12px; border:none; background:#f4f6fb; cursor:pointer; font-weight:700; border-bottom:2px solid #3a7bd5; color:#3a7bd5;" onclick="switchTab('land')">📍 토지목록</button>
+      <button id="tabCommBtn" style="flex:1; padding:12px; border:none; background:#fff; cursor:pointer; font-weight:700; color:#666;" onclick="switchTab('comm')">💬 커뮤니티</button>
     </div>
 
-    <!-- 주소 검색 -->
-    <div class="search-row">
-      <input id="addrInput" type="text" placeholder="주소 입력 (예: 판교로 242, 서울 강남구 역삼동 837)"/>
-      <button onclick="searchAddress()">🔍 검색</button>
-    </div>
-
-    <!-- 내보내기/지우기 -->
-    <div class="btn-row">
-      <button class="btn-export" onclick="exportToCSV()">💾 토지조서 내보내기</button>
-      <button class="btn-table-win" onclick="openTableWindow()">📋 토지목록보기</button>
-      <button class="btn-clear" onclick="clearLandInfo()">🗑 전체 삭제</button>
-    </div>
-
-    <!-- 옵션 -->
-    <div class="opt-table">
-      <table>
-        <tr>
-          <th>지도 타입</th>
-          <td><span id="currentMapType">2D 일반지도</span></td>
-        </tr>
-        <tr id="bldRow" style="display:none;">
-          <th>건물 레이어</th>
-          <td><input id="bldChk" type="checkbox" checked onchange="checkLayer(this,'facility_build')"> 표시</td>
-        </tr>
-        <tr>
-          <th>토지정보 조회</th>
-          <td><input id="landChk" type="checkbox" onchange="toggleLandParcel(this.checked)"> 활성화</td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- 국토계획 주제도 -->
-    <div class="theme-panel">
-      <div class="theme-hd">
-        <span class="theme-hd-title">📋 국토계획 주제도</span>
-        <button class="toggle-btn" onclick="toggleThemePanel()">펼치기</button>
+    <div id="landTabContent" style="display:flex; flex-direction:column; min-height:0; flex:1;">
+      <!-- 기존 토지조회 관련 요소들 (주소검색 ~ 토지목록) -->
+      <!-- 모바일 bottom sheet 핸들 -->
+      <div class="sheet-pull" id="sheetPull" onclick="toggleMobileSheet()">
+        <div class="sheet-pull-bar"></div>
+        <span class="sheet-pull-label" id="sheetPullLabel">토지정보를 클릭하여 조회하세요</span>
+        <span class="sheet-pull-toggle" id="sheetPullToggle">▼</span>
       </div>
-      <div id="themeList"></div>
-    </div>
 
-    <!-- ECVAM 환경성평가 주제도 -->
-    <div class="theme-panel" id="ecvamPanel">
-      <div class="theme-hd">
-        <span class="theme-hd-title">🌿 국토환경성평가 주제도</span>
-        <button class="toggle-btn" id="ecvamToggleBtn" onclick="toggleEcvamPanel()">펼치기</button>
+      <!-- 헤더 -->
+      <div class="hd" style="position:relative;">
+        <h1>🏛 토지정보 조회 시스템</h1>
+        <p>VWorld API 기반 지적정보 조회</p>
+        <button class="help-btn" onclick="openHelp()" title="사용설명서">?</button>
       </div>
-      <div id="ecvamThemeList" style="display:none;">
-        <!-- 등급 범례 -->
-        <div class="ecvam-legend">
-          <span class="ecvam-badge ecvam-gr1">1등급</span>
-          <span class="ecvam-badge ecvam-gr2">2등급</span>
-          <span class="ecvam-badge ecvam-gr3">3등급</span>
-          <span class="ecvam-badge ecvam-gr4">4등급</span>
-          <span class="ecvam-badge ecvam-gr5">5등급</span>
-          <span style="font-size:9px;color:#999;align-self:center;">(1=보전↑)</span>
-        </div>
-      </div>
-    </div>
 
-    <!-- 상태 메시지 -->
-    <div class="status-bar" id="statusBar"></div>
+      <!-- 주소 검색 -->
+      <div class="search-row">
+        <input id="addrInput" type="text" placeholder="주소 입력"/>
+        <button onclick="searchAddress()">🔍 검색</button>
+      </div>
 
-    <!-- 카운트 + 면적 합계 -->
-    <div class="cnt-bar">
-      <span class="ttl">📂 수집된 토지 정보</span>
-      <div style="display:flex;align-items:center;gap:4px;">
-        <button class="sort-btn active" id="sortNewest" onclick="setSortMode('newest')">최신순</button>
-        <button class="sort-btn" id="sortJibunAsc" onclick="setSortMode('jibun_asc')">지번▲</button>
-        <button class="sort-btn" id="sortJibunDesc" onclick="setSortMode('jibun_desc')">지번▼</button>
-        <span class="cnt-badge" id="landCnt">총 0건</span>
+      <!-- 내보내기/지우기 -->
+      <div class="btn-row">
+        <button class="btn-export" onclick="exportToCSV()">💾 내보내기</button>
+        <button class="btn-table-win" onclick="openTableWindow()">📋 토지목록보기</button>
+        <button class="btn-clear" onclick="clearLandInfo()">🗑 삭제</button>
       </div>
-    </div>
-    <div class="area-sum-bar" id="areaSumBar" style="display:none; flex-direction:column; gap:4px; align-items:stretch;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="area-sum-label">📐 <span id="areaCnt">0</span>필지 면적 합계</span>
-        <span class="area-sum-val" id="areaSumVal">0 ㎡</span>
-      </div>
-      <div id="jigaSumRow" style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(26,95,168,0.2); padding-top:4px; margin-top:2px;">
-        <span class="area-sum-label">💰 공시지가 총액
-          <select id="jigaUnitSel" onchange="changeJigaUnit(this.value)" style="margin-left:5px;border:1px solid #b8d6ee;border-radius:4px;background:#eaf3fb;color:#1a5fa8;font-size:10px;font-weight:700;padding:1px 3px;cursor:pointer;outline:none;">
-            <option value="원">원</option>
-            <option value="천원">천원</option>
-            <option value="백만원">백만원</option>
-            <option value="억원">억원</option>
-          </select>
-        </span>
-        <span class="area-sum-val" id="jigaSumVal" style="color:#e67e22;">0 원</span>
-      </div>
-    </div>
 
-    <!-- 토지 목록 -->
-    <div class="land-list" id="landList">
-      <!-- 모바일 테이블 (mobile only - .active 클래스로 제어) -->
-      <div id="mobLandTableWrap" class="mob-land-tbl-wrap">
-        <div style="padding:3px 8px 2px;font-size:10px;color:#3a7bd5;font-weight:600;display:flex;align-items:center;gap:4px;">
-          <span>📋 토지 목록</span>
-          <span style="margin-left:auto;font-size:10px;color:#888;">← 좌우 스크롤로 더 보기 →</span>
-        </div>
-        <table class="mob-land-tbl">
-          <thead>
-            <tr>
-              <th>순번</th>
-              <th>행정동/지번</th>
-              <th>지목</th>
-              <th>면적(㎡)</th>
-              <th>용도지역</th>
-              <th>소유구분</th>
-              <th>기타규제사항</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="mobLandTbody"></tbody>
+      <!-- 옵션 -->
+      <div class="opt-table">
+        <table>
+          <tr>
+            <th>지도 타입</th>
+            <td><span id="currentMapType">2D 일반지도</span></td>
+          </tr>
+          <tr id="bldRow" style="display:none;">
+            <th>건물 레이어</th>
+            <td><input id="bldChk" type="checkbox" checked onchange="checkLayer(this,'facility_build')"> 표시</td>
+          </tr>
+          <tr>
+            <th>토지정보 조회</th>
+            <td><input id="landChk" type="checkbox" onchange="toggleLandParcel(this.checked)"> 활성화</td>
+          </tr>
         </table>
       </div>
-      <div class="empty-state">
-        <div class="ico">📍</div>
-        <p>지도에서 토지를 클릭하면<br>상세 정보가 표시됩니다</p>
+
+      <!-- 국토계획 주제도 -->
+      <div class="theme-panel">
+        <div class="theme-hd">
+          <span class="theme-hd-title">📋 국토계획 주제도</span>
+          <button class="toggle-btn" onclick="toggleThemePanel()">펼치기</button>
+        </div>
+        <div id="themeList"></div>
+      </div>
+
+      <!-- ECVAM 환경성평가 주제도 -->
+      <div class="theme-panel" id="ecvamPanel">
+        <div class="theme-hd">
+          <span class="theme-hd-title">🌿 국토환경성평가 주제도</span>
+          <button class="toggle-btn" id="ecvamToggleBtn" onclick="toggleEcvamPanel()">펼치기</button>
+        </div>
+        <div id="ecvamThemeList" style="display:none;">
+          <!-- 등급 범례 -->
+          <div class="ecvam-legend">
+            <span class="ecvam-badge ecvam-gr1">1등급</span>
+            <span class="ecvam-badge ecvam-gr2">2등급</span>
+            <span class="ecvam-badge ecvam-gr3">3등급</span>
+            <span class="ecvam-badge ecvam-gr4">4등급</span>
+            <span class="ecvam-badge ecvam-gr5">5등급</span>
+            <span style="font-size:9px;color:#999;align-self:center;">(1=보전↑)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 상태 메시지 -->
+      <div class="status-bar" id="statusBar"></div>
+
+      <!-- 카운트 + 면적 합계 -->
+      <div class="cnt-bar">
+        <span class="ttl">📂 수집 정보</span>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <button class="sort-btn active" id="sortNewest" onclick="setSortMode('newest')">최신순</button>
+          <button class="sort-btn" id="sortJibunAsc" onclick="setSortMode('jibun_asc')">지번▲</button>
+          <button class="sort-btn" id="sortJibunDesc" onclick="setSortMode('jibun_desc')">지번▼</button>
+          <span class="cnt-badge" id="landCnt">총 0건</span>
+        </div>
+      </div>
+      <div class="area-sum-bar" id="areaSumBar" style="display:none; flex-direction:column; gap:4px; align-items:stretch;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="area-sum-label">📐 <span id="areaCnt">0</span>필지 면적 합계</span>
+          <span class="area-sum-val" id="areaSumVal">0 ㎡</span>
+        </div>
+        <div id="jigaSumRow" style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(26,95,168,0.2); padding-top:4px; margin-top:2px;">
+          <span class="area-sum-label">💰 공시지가 총액
+            <select id="jigaUnitSel" onchange="changeJigaUnit(this.value)" style="margin-left:5px;border:1px solid #b8d6ee;border-radius:4px;background:#eaf3fb;color:#1a5fa8;font-size:10px;font-weight:700;padding:1px 3px;cursor:pointer;outline:none;">
+              <option value="원">원</option>
+              <option value="천원">천원</option>
+              <option value="백만원">백만원</option>
+              <option value="억원">억원</option>
+            </select>
+          </span>
+          <span class="area-sum-val" id="jigaSumVal" style="color:#e67e22;">0 원</span>
+        </div>
+      </div>
+
+      <!-- 토지 목록 -->
+      <div class="land-list" id="landList">
+        <!-- 모바일 테이블 (mobile only - .active 클래스로 제어) -->
+        <div id="mobLandTableWrap" class="mob-land-tbl-wrap">
+          <div style="padding:3px 8px 2px;font-size:10px;color:#3a7bd5;font-weight:600;display:flex;align-items:center;gap:4px;">
+            <span>📋 토지 목록</span>
+            <span style="margin-left:auto;font-size:10px;color:#888;">← 좌우 스크롤로 더 보기 →</span>
+          </div>
+          <table class="mob-land-tbl">
+            <thead>
+              <tr>
+                <th>순번</th>
+                <th>행정동/지번</th>
+                <th>지목</th>
+                <th>면적(㎡)</th>
+                <th>용도지역</th>
+                <th>소유구분</th>
+                <th>기타규제사항</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mobLandTbody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state">
+          <div class="ico">📍</div>
+          <p>지도를 클릭하면 상세 정보가 표시됩니다</p>
+        </div>
+      </div>
+
+      <!-- 모바일 주제도 빠른 선택 바 (모바일 전용) -->
+      <div class="mob-theme-bar" id="mobThemeBar">
+        <span class="mob-theme-label">🗂 주제도</span>
+        <div class="mob-theme-chips" id="mobThemeChips"></div>
+      </div>
+
+      <div class="footer">
+        © 2025 토지정보조회시스템 · Powered by VWorld API<br>
+        <span style="opacity:0.7;">v3.0.4 (Last Modified: 2026-03-03)</span>
+      </div>
+      <!-- 모바일 하단 주소창 가림 방지를 위한 물리적 공간 확보 (약 7줄 여백) -->
+      <div class="mob-bottom-spacer" style="display:none; height:200px; flex-shrink:0;"></div>
+      <!-- 모바일 전용 버전 표시 (패널 내 하단) -->
+      <div style="display:none;" class="mob-ver-info">
+        v3.0.4 (Update: 2026-03-03)
       </div>
     </div>
 
-    <!-- 모바일 주제도 빠른 선택 바 (모바일 전용) -->
-    <div class="mob-theme-bar" id="mobThemeBar">
-      <span class="mob-theme-label">🗂 주제도</span>
-      <div class="mob-theme-chips" id="mobThemeChips"></div>
+    <!-- 게시판 탭 내용 -->
+    <div id="commTabContent" style="display:none; flex:1; display:flex; flex-direction:column; overflow:hidden; background:#f4f6fb;">
+      <!-- 카테고리 필터 탭 -->
+      <div style="display:flex; background:#fff; border-bottom:1px solid #eee; padding:5px 10px; gap:5px; overflow-x:auto; white-space:nowrap;">
+        <button class="cat-filter active" onclick="setCategory('all', this)" style="padding:6px 12px; border-radius:15px; border:1px solid #ddd; background:#fff; font-size:11px; cursor:pointer;">전체</button>
+        <button class="cat-filter" onclick="setCategory('intro', this)" style="padding:6px 12px; border-radius:15px; border:1px solid #ddd; background:#fff; font-size:11px; cursor:pointer;">🎓 도시계획개론</button>
+        <button class="cat-filter" onclick="setCategory('free', this)" style="padding:6px 12px; border-radius:15px; border:1px solid #ddd; background:#fff; font-size:11px; cursor:pointer;">💬 자유게시판</button>
+        <button class="cat-filter" onclick="setCategory('qna', this)" style="padding:6px 12px; border-radius:15px; border:1px solid #ddd; background:#fff; font-size:11px; cursor:pointer;">❓ Q&A</button>
+      </div>
+      <div id="writeArea" style="padding:15px; background:#fff; border-bottom:1px solid #eee;">
+        <!-- 로그인 안내 또는 글쓰기 폼 -->
+      </div>
+      <div id="postListSide" style="flex:1; overflow-y:auto; padding:15px;">
+        <!-- 사이드바 게시글 목록 -->
+      </div>
     </div>
 
     <div class="footer">
-      © 2025 토지정보조회시스템 · Powered by VWorld API<br>
-      <span style="opacity:0.7;">v3.0.4 (Last Modified: 2026-03-03)</span>
+      © 2025 토지정보조회시스템
     </div>
-    <!-- 모바일 하단 주소창 가림 방지를 위한 물리적 공간 확보 (약 7줄 여백) -->
-    <div class="mob-bottom-spacer" style="display:none; height:200px; flex-shrink:0;"></div>
-    <!-- 모바일 전용 버전 표시 (패널 내 하단) -->
-    <div style="display:none;" class="mob-ver-info">
-      v3.0.4 (Update: 2026-03-03)
+  </div>
+
+  <!-- 커뮤니티 영역 (전체화면) -->
+  <div id="communityArea" style="display:none; position:fixed; top:0; left:0; right:0; bottom:60px; background:#f4f6fb; z-index:10000; overflow-y:auto;">
+    <div class="comm-header" style="background:linear-gradient(135deg,#3a7bd5,#00d2ff); color:#fff; padding:20px; position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center;">
+      <h2 style="margin:0; font-size:20px;">👥 커뮤니티</h2>
+      <div style="display:flex; gap:10px;">
+        <select id="fullCatFilter" onchange="setCategory(this.value)" style="border:none; border-radius:4px; padding:5px; font-size:12px;">
+            <option value="all">전체보기</option>
+            <option value="intro">도시계획개론</option>
+            <option value="free">자유게시판</option>
+            <option value="qna">Q&A</option>
+        </select>
+        <button class="auth-btn" style="color:#fff; border:1px solid #fff; padding:5px 12px; border-radius:20px; font-size:12px;" onclick="openWriteModal()">📝 글쓰기</button>
+      </div>
     </div>
+    <div class="comm-container" id="postListFull" style="max-width:800px; margin:0 auto; padding:15px;">
+      <!-- 전체화면 게시글 목록 -->
+    </div>
+    <button class="write-btn-fixed" onclick="openWriteModal()">+</button>
+  </div>
+
+  <!-- 하단 탭 바 -->
+  <div class="nav-bar">
+    <div class="nav-item active" id="navMap" onclick="switchView('map')">
+      <i>🗺</i>
+      <span>지도조회</span>
+    </div>
+    <div class="nav-item" id="navComm" onclick="switchView('community')">
+      <i>💬</i>
+      <span>커뮤니티</span>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     인증 모달 (로그인/회원가입)
+===================================================== -->
+<div id="authModal" class="modal-overlay" onclick="closeModalOutside(event, 'authModal')">
+  <div class="modal-box">
+    <span class="modal-close" onclick="closeModal('authModal')">✕</span>
+    <h3 id="authModalTitle">로그인</h3>
+    <div id="nickGroup" class="form-group" style="display:none;">
+      <label>닉네임</label>
+      <input type="text" id="authNick" placeholder="사용할 닉네임">
+    </div>
+    <div class="form-group">
+      <label>이메일</label>
+      <input type="email" id="authEmail" placeholder="example@email.com">
+    </div>
+    <div class="form-group">
+      <label>비밀번호</label>
+      <input type="password" id="authPassword" placeholder="6자리 이상">
+    </div>
+    <button class="btn-primary" onclick="handleAuth()" id="authSubmitBtn">로그인</button>
+    <div style="margin-top:15px; text-align:center; font-size:12px; color:#666;">
+      <span id="authToggleText">계정이 없으신가요?</span>
+      <span class="auth-btn" onclick="toggleAuthMode()" id="authToggleBtn">회원가입</span>
+    </div>
+  </div>
+</div>
+
+<!-- 글쓰기 모달 (전체화면용) -->
+<div id="writeModal" class="modal-overlay" onclick="closeModalOutside(event, 'writeModal')">
+  <div class="modal-box">
+    <span class="modal-close" onclick="closeModal('writeModal')">✕</span>
+    <h3>게시글 작성</h3>
+    <div class="form-group">
+      <input type="text" id="postTitleModal" placeholder="제목">
+    </div>
+    <div class="form-group">
+      <textarea id="postContentModal" rows="5" placeholder="내용을 입력하세요..."></textarea>
+    </div>
+    <button class="btn-primary" onclick="submitPost(true)">등록하기</button>
   </div>
 </div>
 
@@ -1782,6 +1934,7 @@ function addLandInfo(d) {
       '<span title="' + addr + '">' + addr + '</span>' +
       '<button class="newwin-btn" onclick="openInNewWindow(\'' + safePnu + '\')">🔗 새창</button>' +
       '<button class="del-btn" data-pnu="' + escHtml(d.pnu) + '">삭제</button>' +
+      '<button class="move-btn" onclick="moveToLand(\'' + safePnu + '\')" style="padding:3px 8px; background:linear-gradient(135deg,#3a7bd5,#00d2ff); color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; white-space:nowrap; margin-left:4px;">📍 현위치</button>' +
     '</div>'
   );
 
@@ -1824,7 +1977,10 @@ function addLandInfo(d) {
     '<td class="ned-val-uname">' + escHtml(d.uname || '-') + '</td>' +
     '<td class="ned-val-own-nm">' + escHtml(d.own_nm || '-') + '</td>' +
     '<td class="ned-val-regs">' + escHtml(d.other_regs || '-') + '</td>' +
-    '<td><button class="mob-del-btn" data-pnu="' + escHtml(d.pnu) + '">삭</button></td>'
+    '<td>' +
+      '<button class="mob-del-btn" data-pnu="' + escHtml(d.pnu) + '" style="margin-right:2px;">삭</button>' +
+      '<button class="mob-move-btn" onclick="moveToLand(\'' + safePnu + '\')" style="padding:2px 6px; background:#3a7bd5; color:#fff; border:none; border-radius:4px; font-size:10px;">위치</button>' +
+    '</td>'
   );
   $('#mobLandTbody').append($tr);
   $('#mobLandTableWrap').addClass('active');
@@ -2136,6 +2292,16 @@ function moveTo(lon, lat) {
       new vw.CoordZ(lon, lat, 800),
       new vw.Direction(0, -90, 0)
     ));
+  }
+}
+
+function moveToLand(pnu) {
+  var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
+  if (d && d._lon && d._lat) {
+    moveTo(d._lon, d._lat);
+    showMsg("📍 해당 필지 위치로 이동했습니다.", "ok");
+  } else {
+    showMsg("위치 정보를 찾을 수 없습니다.", "err");
   }
 }
 
@@ -2641,12 +2807,75 @@ function fetchNedInfo(pnu) {
   });
 }
 
-function updateUname(pnu, uname) {
-  var $targets = $('.land-item[data-pnu="' + pnu + '"], tr[data-pnu="' + pnu + '"]');
-  $targets.find('.ned-val-uname').text(uname);
-  var d = collectedLandInfo.find(function(x){ return x.pnu === pnu; });
-  if (d) { d.uname = uname; }
-}
+/* ===================================================
+   화면 전환 및 모달 제어 (전역)
+=================================================== */
+window.switchView = function(view) {
+  if (view === 'map') {
+    $('#mapView, #sidePanel').show();
+    $('#communityArea').hide();
+    $('#navMap').addClass('active');
+    $('#navComm').removeClass('active');
+    try { map2d.updateSize(); } catch(e) {}
+  } else {
+    $('#mapView, #sidePanel').hide();
+    $('#communityArea').show();
+    $('#navMap').removeClass('active');
+    $('#navComm').addClass('active');
+    // 게시글 목록 새로고침 이벤트 발생
+    window.dispatchEvent(new CustomEvent('refreshPosts'));
+  }
+};
+
+window.openLoginModal = function() {
+  $('#authModal').css('display', 'flex');
+  $('#nickGroup').hide();
+  $('#authModalTitle').text('로그인');
+  $('#authSubmitBtn').text('로그인');
+  $('#authToggleText').text('계정이 없으신가요?');
+  $('#authToggleBtn').text('회원가입');
+  window.authMode = 'login';
+};
+
+window.openWriteModal = function() {
+  if (!window.currentUser) {
+    alert('로그인이 필요한 서비스입니다.');
+    openLoginModal();
+    return;
+  }
+  $('#writeModal').css('display', 'flex');
+};
+
+window.closeModal = function(id) {
+  $('#' + id).hide();
+};
+
+window.closeModalOutside = function(e, id) {
+  if (e.target.id === id) closeModal(id);
+};
+
+window.toggleAuthMode = function() {
+  if (window.authMode === 'login') {
+    $('#nickGroup').show();
+    $('#authModalTitle').text('회원가입');
+    $('#authSubmitBtn').text('가입하기');
+    $('#authToggleText').text('이미 계정이 있으신가요?');
+    $('#authToggleBtn').text('로그인');
+    window.authMode = 'register';
+  } else {
+    $('#nickGroup').hide();
+    $('#authModalTitle').text('로그인');
+    $('#authSubmitBtn').text('로그인');
+    $('#authToggleText').text('계정이 없으신가요?');
+    $('#authToggleBtn').text('회원가입');
+    window.authMode = 'login';
+  }
+};
+
+window.authMode = 'login';
+window.currentUser = null;
+
 </script>
+<script type="module" src="main.js"></script>
 </body>
 </html>

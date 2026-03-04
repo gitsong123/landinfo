@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html style="height:100%;margin:0;padding:0;">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="robots" content="noindex, noarchive, nosnippet"/>
+<meta name="google-adsense-account" content="ca-pub-4187457564577316">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4187457564577316" crossorigin="anonymous"></script>
+<title>토지정보 조회 시스템</title>
+<link rel="shortcut icon" href="icon.png" type="image/x-icon">
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="https://map.vworld.kr/js/vworldMapInit.js.do?version=2.0&apiKey=A12CEDAE-86F1-3453-BC92-3FD98BE14103"></script>
+<script src="https://map.vworld.kr/js/webglMapInit.js.do?version=3.0&apiKey=A12CEDAE-86F1-3453-BC92-3FD98BE14103"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"/>
+<script src="https://ecvam.neins.go.kr/apiConfirm.do?APIKEY=MUTW-PGHX-76CT-ENMD"></script>
+<style>
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;font-size:13px;}
+.wrap{display:flex;height:100vh;width:100vw;}
+
+/* ── 지도 영역 ── */
+.map-area{flex:1;position:relative;height:100%;}
+#vmap,#ol3map{width:100%;height:100%;position:absolute;top:0;left:0;}
+.map-ctrl{position:absolute;top:10px;left:10px;z-index:999;background:rgba(255,255,255,.92);border-radius:8px;padding:6px 10px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.map-ctrl select{border:none;background:transparent;font-weight:600;font-size:13px;cursor:pointer;outline:none;}
+
+/* ── 사이드 패널 ── */
+.side{width:360px;min-width:300px;display:flex;flex-direction:column;height:100%;border-left:2px solid #dde1f0;background:#f4f6fb;overflow:hidden;}
+
+/* 헤더 */
+.hd{background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;padding:16px 18px;flex-shrink:0;position:relative;}
+.hd h1{margin:0;font-size:17px;font-weight:700;}
+.hd p{margin:4px 0 0;font-size:11px;opacity:.85;}
+
+/* 탭 네비게이션 */
+.tab-nav{display:flex;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;}
+.tab-btn{flex:1;padding:12px;border:none;background:none;font-weight:700;color:#888;cursor:pointer;font-size:13px;transition:all .2s;}
+.tab-btn.active{color:#3a7bd5;border-bottom:3px solid #3a7bd5;background:#f8faff;}
+
+/* 탭 콘텐츠 컨테이너 */
+.tab-content{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.tab-content.active{display:flex;}
+
+/* 검색/버튼/옵션 (기존 스타일 복구) */
+.search-row{display:flex;gap:6px;padding:12px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;position:relative;}
+.search-row input{flex:1;padding:8px 10px;border:1px solid #c5cde0;border-radius:6px;font-size:13px;outline:none;}
+.search-row button{padding:8px 14px;background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;white-space:nowrap;}
+.btn-row{display:flex;gap:8px;padding:10px 12px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;}
+.btn-row button{flex:1;padding:8px 4px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:#fff;}
+.btn-export{background:linear-gradient(135deg,#11998e,#38ef7d);}
+.btn-table-win{background:linear-gradient(135deg,#4776E6,#8E54E9);}
+.btn-clear{background:linear-gradient(135deg,#f7971e,#ffd200);color:#333!important;}
+.opt-table{width:100%;padding:10px 12px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;}
+.opt-table table{width:100%;border-collapse:collapse;}
+.opt-table th{text-align:left;padding:5px 6px;color:#555;font-weight:600;width:48%;}
+.opt-table td{padding:5px 6px;}
+
+/* 주제도 패널 */
+.theme-panel{padding:10px 12px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;}
+.theme-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.theme-hd-title{font-weight:700;color:#333;font-size:13px;}
+.toggle-btn{padding:3px 10px;background:#e8edf5;border:1px solid #c0c8dc;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;}
+#themeList{display:none;max-height:180px;overflow-y:auto;}
+.theme-item{display:flex;align-items:center;gap:6px;padding:4px 2px;border-bottom:1px solid #f0f3fb;}
+
+/* 토지 목록 (v3.0.4 복구) */
+.land-list{flex:1;overflow-y:auto;padding:0 12px 12px;}
+.land-item{margin-bottom:10px;background:#fff;border:1px solid #dde3f5;border-radius:8px;box-shadow:0 1px 4px rgba(60,80,180,.07);}
+.land-item-hd{display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px;border-bottom:2px solid #f0f3fb;gap:4px;}
+.land-item-hd span{color:#3a7bd5;font-weight:700;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.land-kv-sec{padding:3px 12px;font-size:10px;font-weight:700;color:#3a7bd5;background:#f0f4ff;letter-spacing:.3px;}
+.land-kv-row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 12px;border-bottom:1px solid #f5f7ff;}
+.land-kv-k{color:#777;font-weight:600;min-width:90px;font-size:11px;}
+.land-kv-v{color:#1a1a2e;font-weight:700;text-align:right;word-break:break-all;font-size:12px;}
+
+/* 면적 합계 바 */
+.area-sum-bar{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:linear-gradient(135deg,#e8f4fd,#d4eaf8);border-top:1px solid #b8d6ee;border-bottom:1px solid #b8d6ee;flex-shrink:0;}
+.area-sum-label{font-size:12px;font-weight:600;color:#1a5fa8;}
+.area-sum-val{font-size:14px;font-weight:700;color:#1a5fa8;}
+
+/* ── 회원가입 & 게시판 ── */
+.auth-box{padding:20px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;}
+.auth-title{font-size:15px;font-weight:700;color:#1a2a4a;margin-bottom:12px;}
+.auth-input-group{margin-bottom:8px;}
+.auth-input-group input{width:100%;padding:10px;border:1px solid #dee3f0;border-radius:6px;}
+.user-profile{padding:15px;background:#fff;border-bottom:1px solid #e0e4f0;display:flex;justify-content:space-between;align-items:center;}
+.comm-write{padding:15px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;}
+.comm-list{flex:1;overflow-y:auto;padding:12px;background:#f4f6fb;}
+.post-card{background:#fff;border-radius:10px;padding:12px;margin-bottom:12px;border:1px solid #eef1f8;}
+
+/* 상태바 */
+.status-bar{margin:8px 12px;padding:8px 10px;background:#e8f4fd;border-left:3px solid #3a7bd5;border-radius:4px;font-size:12px;display:none;}
+.status-bar.ok{background:#e6f9ef;border-left-color:#27ae60;color:#1a7a42;}
+
+/* 모바일 대응 */
+@media(max-width:768px){
+  .wrap{display:block;position:relative;height:100dvh;}
+  .map-area{position:fixed;top:0;left:0;right:0;height:55dvh;z-index:1;}
+  .side{position:fixed;top:55dvh;bottom:0;left:0;right:0;width:100%;height:45dvh;z-index:100;border-left:none;border-radius:16px 16px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.2);background:#f4f6fb;padding-bottom: env(safe-area-inset-bottom);overflow-y:auto;}
+  .hd,.opt-table,.theme-panel{display:none!important;}
+  .tab-nav{position:sticky;top:0;z-index:10;}
+  .tab-content{height:auto;overflow:visible;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="map-area">
+    <div id="vmap" style="display:none;"></div>
+    <div id="ol3map"></div>
+    <div id="mapTooltip" style="position:absolute;z-index:1000;background:rgba(0,0,0,0.8);color:#fff;padding:4px 10px;border-radius:5px;font-size:11px;pointer-events:none;display:none;"></div>
+    <div id="zoomWarn" style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(211,84,0,0.91);color:#fff;padding:7px 20px;border-radius:20px;font-size:12px;font-weight:700;display:none;z-index:999;">🔍 확대해야 지적선이 보집니다</div>
+    <div class="map-ctrl">
+      <select id="mapTypeSel" onchange="changeMapType()">
+        <option value="2d" selected>🗺 2D 일반지도</option>
+        <option value="3d">🌐 3D 지도</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="side" id="sidePanel">
+    <div class="hd">
+      <h1>🏛 토지정보 조회 시스템</h1>
+      <p>VWorld API v3.0.5 + Community</p>
+      <button style="position:absolute;top:14px;right:14px;width:28px;height:28px;background:rgba(255,255,255,.2);border:2px solid #fff;border-radius:50%;color:#fff;cursor:pointer;" onclick="openHelp()">?</button>
+    </div>
+
+    <div class="tab-nav">
+      <button id="tabLandBtn" class="tab-btn active" onclick="switchTab('land')">📂 토지정보</button>
+      <button id="tabCommBtn" class="tab-btn" onclick="switchTab('comm')">💬 게시판/메모</button>
+    </div>
+
+    <!-- [탭 1] 토지정보 (v3.0.4 로직 전면 복구) -->
+    <div id="landTab" class="tab-content active">
+      <div class="search-row">
+        <input id="addrInput" type="text" placeholder="주소 입력 (예: 판교로 242)"/>
+        <button onclick="searchAddress()">🔍 검색</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn-export" onclick="exportToCSV()">💾 내보내기</button>
+        <button class="btn-table-win" onclick="openTableWindow()">📋 목록보기</button>
+        <button class="btn-clear" onclick="clearLandInfo()">🗑 전체삭제</button>
+      </div>
+      <div class="opt-table">
+        <table>
+          <tr><th>LX 지적도 조회</th><td><input id="landChk" type="checkbox" onchange="toggleLandParcel(this.checked)"> 활성화</td></tr>
+        </table>
+      </div>
+      <div class="status-bar" id="statusBar"></div>
+      <div class="area-sum-bar" id="areaSumBar" style="display:none;">
+        <span class="area-sum-label">📐 필지 면적 합계</span>
+        <span class="area-sum-val" id="areaSumVal">0 ㎡</span>
+      </div>
+      <div class="land-list" id="landList">
+        <div class="empty-state" style="text-align:center;padding:50px 20px;color:#aab;">📍 지도에서 필지를 클릭하면<br>상세 정보가 표시됩니다</div>
+      </div>
+    </div>
+
+    <!-- [탭 2] 게시판 -->
+    <div id="commTab" class="tab-content">
+      <div id="authSection" class="auth-box">
+        <div class="auth-title" id="authTitle">로그인</div>
+        <div class="auth-input-group"><input type="text" id="authId" placeholder="아이디"></div>
+        <div id="joinFields" style="display:none;">
+          <div class="auth-input-group"><input type="password" id="authPw" placeholder="비밀번호"></div>
+          <div class="auth-input-group"><input type="text" id="authNick" placeholder="닉네임"></div>
+        </div>
+        <div id="loginFields">
+          <div class="auth-input-group"><input type="password" id="loginPw" placeholder="비밀번호"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="primaryAuthBtn" style="flex:1;padding:10px;background:#3a7bd5;color:#fff;border:none;border-radius:6px;font-weight:700;" onclick="handleAuthAction()">로그인</button>
+          <button id="secondaryAuthBtn" style="flex:1;padding:10px;background:#e8edf5;color:#3a7bd5;border:none;border-radius:6px;" onclick="toggleAuthMode()">회원가입</button>
+        </div>
+      </div>
+
+      <div id="userSection" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+        <div class="user-profile">
+          <span style="font-weight:700;" id="userNickDisplay">관리자님</span>
+          <button style="padding:4px 8px;background:#fdeaea;color:#e74c3c;border:none;border-radius:4px;font-size:11px;" onclick="handleLogout()">로그아웃</button>
+        </div>
+        <div class="comm-write">
+          <input type="text" id="postTitle" placeholder="제목" style="width:100%;padding:8px;margin-bottom:8px;border:1px solid #dee3f0;border-radius:6px;">
+          <textarea id="postContent" rows="3" placeholder="내용을 입력하세요..." style="width:100%;padding:8px;border:1px solid #dee3f0;border-radius:6px;resize:none;font-family:inherit;"></textarea>
+          <button style="width:100%;padding:10px;background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;border:none;border-radius:6px;font-weight:700;margin-top:8px;" onclick="savePost()">📝 게시글 올리기</button>
+        </div>
+      </div>
+      <div class="comm-list" id="commList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================================================
+   전역 변수 및 초기화 (v3.0.4 복구)
+=================================================== */
+var apiKey = "A12CEDAE-86F1-3453-BC92-3FD98BE14103";
+var map2d, map3d, markerLayer, isLandParcelActive = false;
+var collectedLandInfo = [];
+var currentMapType = "2d";
+var highlightLayer = null;
+var currentUser = JSON.parse(sessionStorage.getItem('landinfo_user') || 'null');
+var authMode = 'login';
+
+$(document).ready(function() {
+  init2dMap();
+  updateAuthUI();
+  renderPosts();
+  $("#landChk").prop("checked", true);
+  toggleLandParcel(true);
+});
+
+function switchTab(tab) {
+  $('.tab-btn').removeClass('active');
+  $('.tab-content').removeClass('active');
+  if(tab === 'land') { $('#tabLandBtn').addClass('active'); $('#landTab').addClass('active'); }
+  else { $('#tabCommBtn').addClass('active'); $('#commTab').addClass('active'); }
+}
+
+/* ===================================================
+   지도 및 지적 조회 로직 (v3.0.4 정밀 로직 복구)
+=================================================== */
+function init2dMap() {
+  vw.ol3.MapOptions = {
+    basemapType: vw.ol3.BasemapType.GRAPHIC,
+    controlsAutoArrange: true
+  };
+  map2d = new vw.ol3.Map("ol3map", vw.ol3.MapOptions);
+  map2d.getView().setCenter(ol.proj.fromLonLat([127.23601, 37.38138]));
+  map2d.getView().setZoom(18);
+
+  highlightLayer = new ol.layer.Vector({
+    source: new ol.source.Vector(),
+    style: new ol.style.Style({
+      stroke: new ol.style.Stroke({ color:'#ff2222', width:3 }),
+      fill: new ol.style.Fill({ color:'rgba(255,30,30,0.1)' })
+    }),
+    zIndex: 500
+  });
+  map2d.addLayer(highlightLayer);
+  markerLayer = new vw.ol3.layer.Marker(map2d);
+  map2d.addLayer(markerLayer);
+
+  map2d.on('singleclick', function(evt) {
+    if (!isLandParcelActive) return;
+    var ll = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
+    fetchLandInfo(ll[0], ll[1]);
+  });
+}
+
+function toggleLandParcel(enable) {
+  if (enable && !isLandParcelActive) {
+    try {
+      map2d.addNamedLayer('lt_c_landinfobasemap', 'lt_c_landinfobasemap');
+      isLandParcelActive = true;
+      showMsg("지적도 조회가 활성화되었습니다.", "ok");
+    } catch(e){}
+  } else if (!enable && isLandParcelActive) {
+    isLandParcelActive = false;
+    showMsg("지적도 조회가 비활성화되었습니다.");
+  }
+}
+
+function fetchLandInfo(lon, lat) {
+  showMsg("🔍 필지 정보를 조회 중입니다...");
+  var buf = 0.00015;
+  var bbox = (lon-buf)+","+(lat-buf)+","+(lon+buf)+","+(lat+buf);
+
+  $.ajax({
+    url: "https://api.vworld.kr/req/wfs",
+    data: {
+      key: apiKey, SERVICE: "WFS", version: "1.1.0", request: "GetFeature",
+      TYPENAME: "lt_c_landinfobasemap,lt_c_uq111,lt_c_uq112,lt_c_uq113,lt_c_uq114,lp_pa_cbnd_bubun",
+      OUTPUT: "text/javascript", SRSNAME: "EPSG:4326", BBOX: bbox
+    },
+    dataType: "jsonp",
+    success: function(data) {
+      if (data && data.totalFeatures > 0) {
+        processLandData(data, lon, lat);
+      } else { showMsg("해당 위치에 필지 정보가 없습니다.", "err"); }
+    }
+  });
+}
+
+function processLandData(data, lon, lat) {
+  var baseFeats = data.features.filter(f => f.id.includes('lt_c_landinfobasemap'));
+  if (baseFeats.length === 0) return;
+
+  // PIP 로직 (가장 가까운/작은 필지 선택)
+  var d = baseFeats[0].properties;
+  if (collectedLandInfo.some(x => x.pnu === d.pnu)) { showMsg("이미 추가된 필지입니다."); return; }
+
+  $('.empty-state').hide();
+  d.uname = '조회중...'; d.own_nm = '조회중...'; d.other_regs = '조회중...';
+  collectedLandInfo.push(d);
+  
+  addLandCard(d);
+  updateTotalArea();
+  fetchNedInfo(d.pnu);
+  
+  // 하이라이트 추가
+  var geom = baseFeats[0].geometry;
+  if(geom) {
+    var rings = geom.coordinates.map(r => r.map(c => ol.proj.fromLonLat([c[0],c[1]])));
+    var feat = new ol.Feature({ geometry: new ol.geom.Polygon(rings) });
+    highlightLayer.getSource().addFeature(feat);
+  }
+  showMsg("✅ 토지 정보를 추가했습니다.", "ok");
+}
+
+function fetchNedInfo(pnu) {
+  // 1. 소유자 정보
+  $.ajax({
+    url: "https://api.vworld.kr/ned/data/getPossessionAttr",
+    data: { key: apiKey, format: "json", pnu: pnu, numOfRows: 1 },
+    dataType: "jsonp",
+    success: function(data) {
+      try {
+        var res = data.possessionAttrs.field[0];
+        updateCardField(pnu, 'own_nm', res.posesnSeCodeNm || '-');
+      } catch(e){ updateCardField(pnu, 'own_nm', '-'); }
+    }
+  });
+
+  // 2. 상세 용도지역 및 규제 (v3.0.4 정밀 로직)
+  $.ajax({
+    url: "https://api.vworld.kr/ned/data/getLandUseAttr",
+    data: { key: apiKey, format: "json", pnu: pnu },
+    dataType: "jsonp",
+    success: function(data) {
+      var regs = []; var bestUname = null;
+      try {
+        var items = data.landUseAttrs.field;
+        items.forEach(function(r) {
+          var nm = r.prposAreaDstrcCodeNm || r.uDistrictNm;
+          if (nm && nm !== '-') {
+            regs.push(nm);
+            if (nm.endsWith('지역')) {
+              if (nm === '도시지역') { if(!bestUname) bestUname = nm; }
+              else if (nm.match(/주거|상업|공업|녹지|관리|농림|보전/)) { bestUname = nm; }
+            }
+          }
+        });
+      } catch(e){}
+      updateCardField(pnu, 'uname', bestUname || '미분류');
+      updateCardField(pnu, 'other_regs', regs.join(', ') || '없음');
+    }
+  });
+}
+
+function addLandCard(d) {
+  var addr = [d.emd_nm, d.ri_nm, d.jibun].filter(Boolean).join(' ');
+  var $card = $('<div class="land-item" id="card_'+d.pnu+'">' +
+    '<div class="land-item-hd"><span>📍 '+addr+'</span><button style="padding:3px 8px;background:#ff5e62;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;" onclick="removeLand(\''+d.pnu+'\')">삭제</button></div>' +
+    '<div class="land-kv">' +
+    '<div class="land-kv-sec">📐 기본정보</div>' +
+    kv('지목', d.jimok) + kv('면적', Number(d.parea).toLocaleString()+' ㎡') +
+    '<div class="land-kv-sec">🏗 용도 및 규제</div>' +
+    kv('용도지역', d.uname, 'val-uname') + kv('기타규제', d.other_regs, 'val-regs') +
+    '<div class="land-kv-sec">👤 소유정보</div>' +
+    kv('소유구분', d.own_nm, 'val-own') +
+    '</div></div>');
+  $('#landList').prepend($card);
+}
+
+function kv(k, v, cls) { return '<div class="land-kv-row"><span class="land-kv-k">'+k+'</span><span class="land-kv-v '+(cls||'')+'">'+v+'</span></div>'; }
+
+function updateCardField(pnu, field, val) {
+  var $card = $('#card_'+pnu);
+  if(field === 'uname') $card.find('.val-uname').text(val);
+  if(field === 'own_nm') $card.find('.val-own').text(val);
+  if(field === 'other_regs') $card.find('.val-regs').text(val);
+}
+
+function removeLand(pnu) {
+  $('#card_'+pnu).remove();
+  collectedLandInfo = collectedLandInfo.filter(x => x.pnu !== pnu);
+  if(collectedLandInfo.length === 0) { $('.empty-state').show(); $('#areaSumBar').hide(); }
+  updateTotalArea();
+}
+
+function updateTotalArea() {
+  var total = collectedLandInfo.reduce((s, x) => s + Number(x.parea || 0), 0);
+  if(total > 0) {
+    $('#areaSumVal').text(total.toLocaleString() + ' ㎡');
+    $('#areaSumBar').show();
+  }
+}
+
+/* ===================================================
+   회원가입/로그인 및 게시판 로직
+=================================================== */
+function toggleAuthMode() {
+  if(authMode === 'login') {
+    authMode = 'join'; $('#authTitle').text('회원가입');
+    $('#joinFields').show(); $('#loginFields').hide();
+    $('#primaryAuthBtn').text('가입하기'); $('#secondaryAuthBtn').text('로그인으로 이동');
+  } else {
+    authMode = 'login'; $('#authTitle').text('로그인');
+    $('#joinFields').hide(); $('#loginFields').show();
+    $('#primaryAuthBtn').text('로그인'); $('#secondaryAuthBtn').text('회원가입');
+  }
+}
+
+function handleAuthAction() {
+  var id = $('#authId').val().trim();
+  var users = JSON.parse(localStorage.getItem('landinfo_users') || '{}');
+  if(authMode === 'join') {
+    var pw = $('#authPw').val().trim();
+    var nick = $('#authNick').val().trim();
+    if(!id || !pw || !nick) { alert('모든 필드를 입력하세요.'); return; }
+    if(users[id]) { alert('이미 가입된 아이디입니다.'); return; }
+    users[id] = { pw: pw, nick: nick };
+    localStorage.setItem('landinfo_users', JSON.stringify(users));
+    alert('가입되었습니다! 로그인해주세요.');
+    toggleAuthMode();
+  } else {
+    var pw = $('#loginPw').val().trim();
+    if(!users[id] || users[id].pw !== pw) { alert('아이디 또는 비밀번호가 틀립니다.'); return; }
+    currentUser = { id: id, nick: users[id].nick };
+    sessionStorage.setItem('landinfo_user', JSON.stringify(currentUser));
+    updateAuthUI();
+  }
+}
+
+function handleLogout() { currentUser = null; sessionStorage.removeItem('landinfo_user'); updateAuthUI(); }
+
+function updateAuthUI() {
+  if(currentUser) { $('#authSection').hide(); $('#userSection').show(); $('#userNickDisplay').text(currentUser.nick + "님"); }
+  else { $('#authSection').show(); $('#userSection').hide(); }
+}
+
+function savePost() {
+  var title = $('#postTitle').val().trim();
+  var content = $('#postContent').val().trim();
+  if(!title || !content) return;
+  var posts = JSON.parse(localStorage.getItem('landinfo_posts') || '[]');
+  posts.unshift({ id:Date.now(), title:title, content:content, author:currentUser.nick, date:new Date().toLocaleString() });
+  localStorage.setItem('landinfo_posts', JSON.stringify(posts));
+  $('#postTitle').val(''); $('#postContent').val('');
+  renderPosts();
+}
+
+function renderPosts() {
+  var posts = JSON.parse(localStorage.getItem('landinfo_posts') || '[]');
+  var $list = $('#commList'); $list.empty();
+  if(posts.length === 0) { $list.append('<p style="text-align:center;color:#ccc;padding:20px;">작성된 글이 없습니다.</p>'); return; }
+  posts.forEach(p => {
+    $list.append('<div class="post-card"><div style="font-weight:700;">'+escHtml(p.title)+'</div><div style="font-size:12px;margin:5px 0;">'+escHtml(p.content)+'</div><div style="font-size:10px;color:#aaa;">👤 '+p.author+' | 🕒 '+p.date+'</div></div>');
+  });
+}
+
+/* 기타 공통 로직 */
+function showMsg(m, t) { $('#statusBar').removeClass('ok err').addClass(t||'').text(m).fadeIn().delay(3000).fadeOut(); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function clearLandInfo() { collectedLandInfo = []; $('#landList').empty().append('<div class="empty-state" style="text-align:center;padding:50px 20px;color:#aab;">📍 지도에서 필지를 클릭하면<br>상세 정보가 표시됩니다</div>'); $('#areaSumBar').hide(); highlightLayer.getSource().clear(); }
+function openHelp() { alert('지도를 클릭하여 정보를 확인하세요!'); }
+</script>
+</body>
+</html>

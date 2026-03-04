@@ -1,0 +1,54 @@
+query ListAllParcels @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public as it retrieves general parcel information.") {
+  parcels {
+    id
+    parcelID
+    address
+    areaSqM
+    latitude
+    longitude
+    zoning
+    currentOwnerName
+  }
+}
+
+query GetMyWatchlists @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users, as it retrieves watchlists specific to their authenticated UID.") {
+  watchlists(where: {userId: {eq_expr: "auth.uid"}}) {
+    id
+    name
+    description
+    createdAt
+    watchlistItems {
+      parcel {
+        id
+        parcelID
+        address
+      }
+      notes
+    }
+  }
+}
+
+mutation CreateNewParcel($parcelID: String!, $address: String!, $latitude: Float!, $longitude: Float!, $areaSqM: Float!) @auth(level: USER, insecureReason: "This operation is safe for authenticated users to create new parcels.") {
+  parcel_insert(data: {
+    parcelID: $parcelID,
+    address: $address,
+    latitude: $latitude,
+    longitude: $longitude,
+    areaSqM: $areaSqM,
+    createdAt_expr: "request.time"
+  }) {
+    id
+  }
+}
+
+mutation AddParcelToWatchlist($watchlistId: UUID!, $parcelId: UUID!, $notes: String) @auth(level: USER, insecureReason: "This operation is safe for authenticated users to add parcels to their watchlists.") {
+  watchlistItem_insert(data: {
+    watchlistId: $watchlistId,
+    parcelId: $parcelId,
+    addedAt_expr: "request.time",
+    notes: $notes
+  }) {
+    watchlistId
+    parcelId
+  }
+}

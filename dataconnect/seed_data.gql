@@ -1,0 +1,124 @@
+mutation CreateDemoData @transaction @auth(level: USER, insecureReason: "Seed data is for development purposes and can be exposed to all logged in users.") {
+  user_insertMany(data: [
+    {
+      id: "b4d3a2c1-9e87-6f54-3d21-a9b8c7d6e5f0",
+      displayName: "Alice Smith",
+      email: "alice.smith@example.com",
+      createdAt: "2023-01-15T10:00:00Z",
+      photoUrl: "https://example.com/alice.jpg"
+    },
+    {
+      id: "e0f1d2c3-4b5a-6789-9d0e-1f2g3h4i5j6k",
+      displayName: "Bob Johnson",
+      email: "bob.johnson@example.com",
+      createdAt: "2023-02-20T11:30:00Z",
+      photoUrl: "https://example.com/bob.jpg"
+    }
+  ])
+  parcel_insertMany(data: [
+    {
+      id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+      parcelID: "P12345",
+      address: "123 Main St",
+      latitude: 34.0522,
+      longitude: -118.2437,
+      areaSqM: 500.25,
+      createdAt: "2023-03-01T09:00:00Z",
+      legalDescription: "Lot 1, Block A, City Subdivision",
+      zoning: "R1",
+      currentOwnerName: "Alice Smith",
+      lastSaleDate: "2022-10-20",
+      lastSalePrice: 750000.00
+    },
+    {
+      id: "f0e9d8c7-b6a5-4321-fedc-ba9876543210",
+      parcelID: "P67890",
+      address: "456 Oak Ave",
+      latitude: 34.0622,
+      longitude: -118.2537,
+      areaSqM: 750.00,
+      createdAt: "2023-03-10T14:15:00Z",
+      legalDescription: "Lot 2, Block B, Town Subdivision",
+      zoning: "C2",
+      currentOwnerName: "Bob Johnson",
+      lastSaleDate: "2023-01-05",
+      lastSalePrice: 1200000.00
+    }
+  ])
+  ownershipHistory_insertMany(data: [
+    {
+      parcel: {id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"},
+      ownerName: "Original Owner",
+      transferDate: "2018-05-01",
+      transferType: "Sale",
+      price: 500000.00
+    },
+    {
+      parcel: {id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"},
+      ownerName: "Alice Smith",
+      transferDate: "2022-10-20",
+      transferType: "Sale",
+      price: 750000.00
+    },
+    {
+      parcel: {id: "f0e9d8c7-b6a5-4321-fedc-ba9876543210"},
+      ownerName: "Previous Owner",
+      transferDate: "2020-11-12",
+      transferType: "Sale",
+      price: 900000.00
+    },
+    {
+      parcel: {id: "f0e9d8c7-b6a5-4321-fedc-ba9876543210"},
+      ownerName: "Bob Johnson",
+      transferDate: "2023-01-05",
+      transferType: "Sale",
+      price: 1200000.00
+    }
+  ])
+  zoningRegulation_insertMany(data: [
+    {
+      parcel: {id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"},
+      zoningType: "Residential",
+      allowedUses: "Single-family homes, parks",
+      createdAt: "2023-03-01T10:00:00Z",
+      heightRestrictions: "Max 2 stories",
+      setbackRequirements: "Front: 10ft, Side: 5ft"
+    },
+    {
+      parcel: {id: "f0e9d8c7-b6a5-4321-fedc-ba9876543210"},
+      zoningType: "Commercial",
+      allowedUses: "Retail, offices, restaurants",
+      createdAt: "2023-03-10T15:00:00Z",
+      heightRestrictions: "Max 5 stories",
+      setbackRequirements: "Front: 15ft, Side: 7ft"
+    }
+  ])
+  watchlist_insertMany(data: [
+    {
+      user: {id: "b4d3a2c1-9e87-6f54-3d21-a9b8c7d6e5f0"},
+      name: "Alice's Favorites",
+      createdAt: "2023-04-01T08:00:00Z",
+      description: "My top parcels of interest"
+    },
+    {
+      user: {id: "e0f1d2c3-4b5a-6789-9d0e-1f2g3h4i5j6k"},
+      name: "Bob's Investment Properties",
+      createdAt: "2023-04-05T12:00:00Z",
+      description: "Parcels I'm considering for investment"
+    }
+  ])
+  watchlistItem_insertMany(data: [
+    {
+      watchlist: {id: "19f5a092-23c7-4e0a-8d1e-2b3c4d5e6f7a"}, # Assuming this UUID is generated for Alice's watchlist
+      parcel: {id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"},
+      addedAt: "2023-04-01T08:15:00Z",
+      notes: "Potential for redevelopment"
+    },
+    {
+      watchlist: {id: "6a8d7c2b-e1f0-4567-8901-23456789abcd"}, # Assuming this UUID is generated for Bob's watchlist
+      parcel: {id: "f0e9d8c7-b6a5-4321-fedc-ba9876543210"},
+      addedAt: "2023-04-05T12:30:00Z",
+      notes: "High rental income potential"
+    }
+  ])
+}

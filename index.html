@@ -27,14 +27,8 @@
 <link rel="stylesheet" href="style.css"/>
 <script src="https://ecvam.neins.go.kr/apiConfirm.do?APIKEY=MUTW-PGHX-76CT-ENMD"></script>
 <style>
-/* 탭 바 스타일 */
-.nav-bar{position:fixed;bottom:0;left:0;right:0;height:60px;background:#fff;display:flex;border-top:1px solid #ddd;z-index:10001;box-shadow:0 -2px 10px rgba(0,0,0,0.1);}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;cursor:pointer;font-size:11px;font-weight:600;}
-.nav-item.active{color:#3a7bd5;}
-.nav-item i{font-size:20px;margin-bottom:2px;}
-
 /* 커뮤니티 영역 */
-#communityArea{display:none;position:fixed;top:0;left:0;right:0;bottom:60px;background:#f4f6fb;z-index:10000;overflow-y:auto;padding-bottom:20px;}
+
 .comm-header{background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;padding:20px;position:sticky;top:0;z-index:10;}
 .comm-header h2{margin:0;font-size:20px;}
 .comm-container{max-width:800px;margin:0 auto;padding:15px;}
@@ -65,7 +59,7 @@
 .auth-btn{color:#3a7bd5;font-weight:700;cursor:pointer;}
 
 @media(max-width:768px){
-  #communityArea{bottom:60px;}
+  /* #communityArea{bottom:60px;} removed */
 }
 </style>
 <style>
@@ -107,7 +101,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 .opt-table td{padding:5px 6px;}
 .opt-table td span{font-weight:600;color:#3a7bd5;}
 
-/* 주제도 패널 */
+/* ── 주제도 패널 ── */
 .theme-panel{padding:10px 12px;background:#fff;border-bottom:1px solid #e0e4f0;flex-shrink:0;}
 .theme-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
 .theme-hd-title{font-weight:700;color:#333;font-size:13px;}
@@ -117,17 +111,48 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 .theme-item:hover{background:#f4f7ff;}
 .theme-item label{flex:1;cursor:pointer;font-size:12px;}
 .drag-handle{color:#aaa;font-size:14px;cursor:grab;}
+.theme-legend{display:none;padding:5px 5px 5px 25px;background:#fff;border-bottom:1px solid #f0f3fb;}
+.theme-legend-img{max-width:100%;height:auto;display:block;}
 
-/* 상태 메시지 */
-.status-bar{margin:8px 12px;padding:8px 10px;background:#e8f4fd;border-left:3px solid #3a7bd5;border-radius:4px;font-size:12px;color:#1a5fa8;display:none;}
-.status-bar.ok{background:#e6f9ef;border-left-color:#27ae60;color:#1a7a42;}
-.status-bar.err{background:#fdecea;border-left-color:#e74c3c;color:#c0392b;}
+/* 생태자연도 토글 및 범례 스타일 */
+.eco-wms-ctrl{position:absolute;top:55px;left:10px;z-index:999;background:#fff;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;border:1px solid #ddd;}
+.eco-wms-ctrl:hover{background:#f0f4ff;transform:translateY(-1px);}
+.eco-wms-ctrl.active{background:linear-gradient(135deg,#27ae60,#38ef7d);color:#fff;border-color:#27ae60;}
+.eco-wms-icon{font-size:16px;}
+.eco-wms-text{font-weight:700;font-size:12px;}
+
+.eco-wms-legend{position:absolute;bottom:10px;left:10px;z-index:998;background:rgba(255,255,255,0.92);border-radius:8px;padding:8px 12px;box-shadow:0 2px 10px rgba(0,0,0,0.15);display:none;min-width:140px;border:1px solid #dde1f0;}
+.eco-legend-hd{font-weight:800;font-size:11px;color:#1a3a80;margin-bottom:6px;border-bottom:1px solid #eee;padding-bottom:4px;display:flex;align-items:center;gap:4px;}
+.eco-legend-content{display:flex;flex-direction:column;gap:3px;}
+.eco-legend-row{display:flex;align-items:center;gap:6px;font-size:11px;color:#444;font-weight:600;}
+.eco-chip{width:12px;height:12px;border-radius:2px;flex-shrink:0;}
+.eco-chip.gr1{background:#006633;}
+.eco-chip.gr2{background:#339966;}
+.eco-chip.gr3{background:#BBAA00;}
+.eco-chip.gr-sp{background:#8E44AD;}
 
 /* ECVAM 환경성평가 등급 배지 */
 .ecvam-badge{display:inline-block;padding:1px 7px;border-radius:9px;font-size:11px;font-weight:700;color:#fff;}
 .ecvam-gr1{background:#006633;}.ecvam-gr2{background:#339966;}
 .ecvam-gr3{background:#BBAA00;color:#fff;}.ecvam-gr4{background:#CC6600;}
 .ecvam-gr5{background:#CC3300;}
+
+/* 모바일 전용 범례 스타일 (하단 한줄) */
+@media(max-width:768px){
+  .legend-container-bottom{
+    position:absolute;bottom:0;left:0;right:0;z-index:998;
+    background:rgba(255,255,255,0.85);backdrop-filter:blur(2px);
+    display:flex;flex-direction:column;gap:0;
+    border-top:1px solid #ddd;padding:2px 8px;
+  }
+  .eco-wms-legend{
+    position:static;display:none;width:100%;min-width:unset;
+    background:transparent;box-shadow:none;border:none;padding:2px 0;
+  }
+  .eco-legend-hd{margin-bottom:0;border-bottom:none;padding-bottom:0;min-width:70px;flex-shrink:0;font-size:10px;}
+  .eco-legend-content{flex-direction:row;flex-wrap:wrap;gap:8px;align-items:center;}
+  .eco-legend-row{gap:3px;font-size:10px;white-space:nowrap;}
+}
 .ecvam-link{font-size:10px;color:#3a7bd5;text-decoration:underline;cursor:pointer;}
 /* ECVAM 범례 */
 .ecvam-legend{display:flex;gap:4px;flex-wrap:wrap;padding:2px 12px 6px;}
@@ -437,6 +462,41 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
         <option value="3d">🌐 3D 지도</option>
       </select>
     </div>
+    <!-- 생태자연도 전용 토글 -->
+    <div class="eco-wms-ctrl" id="ecoWmsToggle" onclick="toggleEcoWmsDirect()">
+      <span class="eco-wms-icon">🍃</span>
+      <span class="eco-wms-text">생태자연도</span>
+    </div>
+    <!-- 국토환경성평가 전용 토글 -->
+    <div class="eco-wms-ctrl" id="ecvamDirectToggle" onclick="toggleEcvamDirect()" style="top:100px;">
+      <span class="eco-wms-icon">🌿</span>
+      <span class="eco-wms-text">환경성평가</span>
+    </div>
+
+    <!-- 범례 컨테이너 (좌측 하단 통합) -->
+    <div class="legend-container-bottom">
+      <!-- 생태자연도 범례 -->
+      <div id="ecoWmsLegend" class="eco-wms-legend">
+        <div class="eco-legend-hd">🍃 생태자연도</div>
+        <div class="eco-legend-content">
+          <div class="eco-legend-row"><span class="eco-chip gr1"></span> 1등급</div>
+          <div class="eco-legend-row"><span class="eco-chip gr2"></span> 2등급</div>
+          <div class="eco-legend-row"><span class="eco-chip gr3"></span> 3등급</div>
+          <div class="eco-legend-row"><span class="eco-chip gr-sp"></span> 별도</div>
+        </div>
+      </div>
+      <!-- 국토환경성평가 범례 -->
+      <div id="ecvamDirectLegend" class="eco-wms-legend">
+        <div class="eco-legend-hd">🌿 환경성평가</div>
+        <div class="eco-legend-content">
+          <div class="eco-legend-row"><span class="eco-chip ecvam-gr1"></span> 1등</div>
+          <div class="eco-legend-row"><span class="eco-chip ecvam-gr2"></span> 2등</div>
+          <div class="eco-legend-row"><span class="eco-chip ecvam-gr3"></span> 3등</div>
+          <div class="eco-legend-row"><span class="eco-chip ecvam-gr4"></span> 4등</div>
+          <div class="eco-legend-row"><span class="eco-chip ecvam-gr5"></span> 5등</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 사이드 패널 -->
@@ -630,37 +690,6 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     </div>
   </div>
 
-  <!-- 커뮤니티 영역 (전체화면) -->
-  <div id="communityArea" style="display:none; position:fixed; top:0; left:0; right:0; bottom:60px; background:#f4f6fb; z-index:10000; overflow-y:auto;">
-    <div class="comm-header" style="background:linear-gradient(135deg,#3a7bd5,#00d2ff); color:#fff; padding:20px; position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center;">
-      <h2 style="margin:0; font-size:20px;">👥 커뮤니티</h2>
-      <div style="display:flex; gap:10px;">
-        <select id="fullCatFilter" onchange="setCategory(this.value)" style="border:none; border-radius:4px; padding:5px; font-size:12px;">
-            <option value="all">전체보기</option>
-            <option value="intro">도시계획개론</option>
-            <option value="free">자유게시판</option>
-            <option value="qna">Q&A</option>
-        </select>
-        <button class="auth-btn" style="color:#fff; border:1px solid #fff; padding:5px 12px; border-radius:20px; font-size:12px;" onclick="openWriteModal()">📝 글쓰기</button>
-      </div>
-    </div>
-    <div class="comm-container" id="postListFull" style="max-width:800px; margin:0 auto; padding:15px;">
-      <!-- 전체화면 게시글 목록 -->
-    </div>
-    <button class="write-btn-fixed" onclick="openWriteModal()">+</button>
-  </div>
-
-  <!-- 하단 탭 바 -->
-  <div class="nav-bar">
-    <div class="nav-item active" id="navMap" onclick="switchView('map')">
-      <i>🗺</i>
-      <span>지도조회</span>
-    </div>
-    <div class="nav-item" id="navComm" onclick="switchView('community')">
-      <i>💬</i>
-      <span>커뮤니티</span>
-    </div>
-  </div>
 </div>
 
 <!-- ====================================================
@@ -687,21 +716,6 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
       <span id="authToggleText">계정이 없으신가요?</span>
       <span class="auth-btn" onclick="toggleAuthMode()" id="authToggleBtn">회원가입</span>
     </div>
-  </div>
-</div>
-
-<!-- 글쓰기 모달 (전체화면용) -->
-<div id="writeModal" class="modal-overlay" onclick="closeModalOutside(event, 'writeModal')">
-  <div class="modal-box">
-    <span class="modal-close" onclick="closeModal('writeModal')">✕</span>
-    <h3>게시글 작성</h3>
-    <div class="form-group">
-      <input type="text" id="postTitleModal" placeholder="제목">
-    </div>
-    <div class="form-group">
-      <textarea id="postContentModal" rows="5" placeholder="내용을 입력하세요..."></textarea>
-    </div>
-    <button class="btn-primary" onclick="submitPost(true)">등록하기</button>
   </div>
 </div>
 
@@ -1042,7 +1056,7 @@ var themeData = [
   { name:"상수원보호구역",     layer:"LT_C_UM710",          lf:"uname" },
   { name:"건축물 정보",        layer:"LT_C_BLDGINFO",       lf:"" },
   { name:"초등학교통학구역",   layer:"LT_C_DESCH",          lf:"hakgudo_nm" },
-  { name:"산림입지도(산지)",   layer:"LT_C_FSDIFRSTS",      lf:"name" }  /* 참고용 주제도만 유지 */
+  { name:"산림입지도(산지)",   layer:"LT_C_FSDIFRSTS",      lf:"name" }
 ];
 
 /* ECVAM 환경성평가 레이어 목록 (ecvam.neins.go.kr) */
@@ -1050,6 +1064,7 @@ var ecvamThemeData = [
   { id:"nem_ecvam",    name:"국토환경성평가지도 (종합등급)" },
   { id:"nem_eco",      name:"환경·생태적 평가결과" },
   { id:"nem_eco_01",   name:"생태자연도(다양성)" },
+  { id:"eco_2015_g",   name:"🍃 생태자연도 (WMS)", type:"wms", url:"https://api.mcee.go.kr/geoserver/gwc/service/wms?" },
   { id:"nem_eco_02",   name:"자연성 평가" },
   { id:"nem_eco_04",   name:"희귀성 평가" },
   { id:"nem_law",      name:"법제적 평가결과 (종합)" },
@@ -1274,7 +1289,21 @@ function toggleLandParcel(enable) {
 function toggle2dLayer(enable) {
   if (enable && !isLandParcelActive) {
     try {
-      landLayer2d = map2d.addNamedLayer('lt_c_landinfobasemap', 'lt_c_landinfobasemap');
+      // VWorld addNamedLayer 대신 직접 ol.layer.TileWMS로 추가 (더 안정적)
+      landLayer2d = new ol.layer.Tile({
+        source: new ol.source.TileWMS({
+          url: "https://api.vworld.kr/req/wms?",
+          params: {
+            'LAYERS': 'lt_c_landinfobasemap',
+            'STYLES': 'lt_c_landinfobasemap',
+            'FORMAT': 'image/png',
+            'TRANSPARENT': 'TRUE',
+            'key': apiKey,
+            'DOMAIN': window.location.hostname
+          }
+        }),
+        zIndex: 1000
+      });
       map2d.addLayer(landLayer2d);
       isLandParcelActive = true;
       showMsg("LX 지적도가 활성화되었습니다.", "ok");
@@ -1282,7 +1311,7 @@ function toggle2dLayer(enable) {
     } catch(e){ showMsg("지적도 활성화 오류: " + e.message, "err"); }
   } else if (!enable && isLandParcelActive) {
     try {
-      if (landLayer2d) { landLayer2d.setVisible(false); map2d.removeLayer(landLayer2d); landLayer2d = null; }
+      if (landLayer2d) { map2d.removeLayer(landLayer2d); landLayer2d = null; }
       isLandParcelActive = false;
       showMsg("지적도가 비활성화되었습니다.");
       $('#zoomWarn').hide();
@@ -1331,7 +1360,8 @@ function initThemeList() {
       '<span class="drag-handle">☰</span>' +
       '<input type="checkbox" id="tc_' + t.layer + '" data-layer="' + t.layer + '">' +
       '<label for="tc_' + t.layer + '">' + t.name + '</label>' +
-      '</div>');
+      '</div>' +
+      '<div id="lg_' + t.layer + '" class="theme-legend"></div>');
     $list.append($item);
     $item.find('input').on('change', function(){ toggleThemeLayer(t.layer, this.checked, t); });
   });
@@ -1354,6 +1384,9 @@ function toggleThemeLayer(layerName, enable, theme) {
     $("#tc_" + layerName).prop("checked", false);
     return;
   }
+  
+  var $lg = $("#lg_" + layerName);
+  
   if (enable) {
     if (!themeLayers[layerName]) {
       try {
@@ -1363,12 +1396,18 @@ function toggleThemeLayer(layerName, enable, theme) {
     }
     themeLayers[layerName].setVisible(true);
     syncMobChip(layerName, true);
+    
+    // 범례 이미지 로드 및 표시
+    var lgUrl = "https://api.vworld.kr/req/image?service=image&request=GetLegendGraphic&format=png&layer=" + layerName + "&style=" + layerName + "&type=ALL&key=" + apiKey;
+    $lg.html('<img src="' + lgUrl + '" class="theme-legend-img">').slideDown();
+    
     showMsg(theme.name + " 주제도 활성화됨.", "ok");
     updateLayerOrder();
   } else {
     if (themeLayers[layerName]) {
       themeLayers[layerName].setVisible(false);
       syncMobChip(layerName, false);
+      $lg.slideUp().empty();
       showMsg(theme.name + " 주제도 비활성화됨.");
     }
   }
@@ -1376,10 +1415,26 @@ function toggleThemeLayer(layerName, enable, theme) {
 
 function updateLayerOrder() {
   if (currentMapType !== "2d") return;
+  
+  var zBase = 100;
+  
+  // 1. 국토계획 주제도 순서 설정
   $("#themeList .theme-item").each(function(i) {
     var ln = $(this).data("layer");
-    if (themeLayers[ln]) try{ themeLayers[ln].setZIndex(100 - i); }catch(e){}
+    if (themeLayers[ln]) try{ themeLayers[ln].setZIndex(zBase + (themeData.length - i)); }catch(e){}
   });
+  
+  // 2. ECVAM 주제도 순서 설정 (국토계획보다 위)
+  var zEcvam = zBase + themeData.length + 10;
+  $("#ecvamThemeList .theme-item").each(function(i) {
+    var id = $(this).data("ecvam");
+    if (ecvamThemeLayers[id]) try{ ecvamThemeLayers[id].setZIndex(zEcvam + (ecvamThemeData.length - i)); }catch(e){}
+  });
+  
+  // 3. LX 지적도(landLayer2d)를 항상 최상위로 유지
+  if (landLayer2d) {
+    try { landLayer2d.setZIndex(1000); } catch(e){}
+  }
 }
 
 /* ===================================================
@@ -1392,10 +1447,17 @@ function initEcvamThemeList() {
       '<span class="drag-handle">☰</span>' +
       '<input type="checkbox" id="etc_' + t.id + '" data-ecvam="' + t.id + '">' +
       '<label for="etc_' + t.id + '">' + t.name + '</label>' +
-      '</div>');
+      '</div>' +
+      '<div id="elg_' + t.id + '" class="theme-legend"></div>');
     $list.append($item);
     $item.find('input').on('change', function(){ toggleEcvamLayer(t.id, t.name, this.checked); });
   });
+  
+  // ECVAM 레이어 리스트도 이동 가능하게 설정
+  try {
+    $list.sortable({ handle:'.drag-handle', update: updateLayerOrder });
+    $list.disableSelection();
+  } catch(e){}
 }
 
 function toggleEcvamPanel() {
@@ -1411,6 +1473,59 @@ function toggleEcvamLayer(layerId, layerName, enable) {
     $("#etc_" + layerId).prop("checked", false);
     return;
   }
+
+  var $lg = $("#elg_" + layerId);
+
+  // WMS 타입 처리 (생태자연도)
+  var theme = ecvamThemeData.find(function(x){ return x.id === layerId; });
+  if (theme && theme.type === "wms") {
+    if (enable) {
+      if (!ecvamThemeLayers[layerId]) {
+        try {
+          var layer = new ol.layer.Tile({
+            source: new ol.source.TileWMS({
+              url: theme.url,
+              params: {
+                'LAYERS': 'EGIS:eco_2015_g',
+                'TILED': true,
+                'SRS': 'EPSG:3857'
+              }
+            })
+          });
+          map2d.addLayer(layer);
+          ecvamThemeLayers[layerId] = layer;
+        } catch(e) { showMsg("WMS 레이어 추가 오류: " + e.message, "err"); return; }
+      } else {
+        ecvamThemeLayers[layerId].setVisible(true);
+      }
+      syncMobEcvamChip(layerId, true);
+      
+      // 범례 이미지 로드 및 표시 (WMS)
+      var lgUrl = theme.url + "SERVICE=WMS&REQUEST=GetLegendGraphic&LAYER=EGIS:eco_2015_g&FORMAT=image/png";
+      $lg.html('<img src="' + lgUrl + '" class="theme-legend-img">').slideDown();
+
+      if (layerId === "eco_2015_g") {
+        $("#ecoWmsToggle").addClass("active");
+        $("#ecoWmsLegend").show();
+      }
+      showMsg("🍃 " + layerName + " 활성화됨.", "ok");
+      updateLayerOrder();
+    } else {
+      if (ecvamThemeLayers[layerId]) {
+        ecvamThemeLayers[layerId].setVisible(false);
+        syncMobEcvamChip(layerId, false);
+        $lg.slideUp().empty();
+        if (layerId === "eco_2015_g") {
+          $("#ecoWmsToggle").removeClass("active");
+          $("#ecoWmsLegend").hide();
+        }
+        showMsg(layerName + " 비활성화됨.");
+      }
+    }
+    return;
+  }
+
+  // 일반 ECVAM 레이어 처리
   if (typeof ecvamLayerCreate === 'undefined') {
     showMsg("ECVAM API 로드 실패. 인터넷 연결 후 새로고침하세요.", "err");
     $("#etc_" + layerId).prop("checked", false);
@@ -1420,7 +1535,6 @@ function toggleEcvamLayer(layerId, layerName, enable) {
     if (!ecvamThemeLayers[layerId]) {
       try {
         var layer = ecvamLayerCreate(layerId, true);
-        layer.setZIndex(200);
         map2d.addLayer(layer);
         ecvamThemeLayers[layerId] = layer;
       } catch(e) { showMsg("레이어 추가 오류: " + e.message, "err"); return; }
@@ -1428,14 +1542,48 @@ function toggleEcvamLayer(layerId, layerName, enable) {
       ecvamThemeLayers[layerId].setVisible(true);
     }
     syncMobEcvamChip(layerId, true);
+    
+    // 범례 이미지 로드 및 표시
+    var lgUrl = "https://ecvam.neins.go.kr/apicall.do?service=image&request=GetLegendGraphic&layer=" + layerId + "&key=" + ecvamApiKey;
+    $lg.html('<img src="' + lgUrl + '" class="theme-legend-img">').slideDown();
+
+    // 종합등급 전용 토글 상태 동기화
+    if (layerId === "nem_ecvam") {
+      $("#ecvamDirectToggle").addClass("active");
+      $("#ecvamDirectLegend").show();
+    }
     showMsg("🌿 " + layerName + " 레이어 활성화됨.", "ok");
+    updateLayerOrder();
   } else {
     if (ecvamThemeLayers[layerId]) {
       ecvamThemeLayers[layerId].setVisible(false);
       syncMobEcvamChip(layerId, false);
+      $lg.slideUp().empty();
+      if (layerId === "nem_ecvam") {
+        $("#ecvamDirectToggle").removeClass("active");
+        $("#ecvamDirectLegend").hide();
+      }
       showMsg(layerName + " 레이어 비활성화됨.");
     }
   }
+}
+
+/* 생태자연도 전용 토글 함수 */
+function toggleEcoWmsDirect() {
+  var layerId = "eco_2015_g";
+  var layerName = "생태자연도";
+  var enable = !$("#ecoWmsToggle").hasClass("active");
+  $("#etc_" + layerId).prop("checked", enable);
+  toggleEcvamLayer(layerId, layerName, enable);
+}
+
+/* 국토환경성평가(종합등급) 전용 토글 함수 */
+function toggleEcvamDirect() {
+  var layerId = "nem_ecvam";
+  var layerName = "국토환경성평가지도";
+  var enable = !$("#ecvamDirectToggle").hasClass("active");
+  $("#etc_" + layerId).prop("checked", enable);
+  toggleEcvamLayer(layerId, layerName, enable);
 }
 
 /* ===================================================
@@ -1934,7 +2082,7 @@ function addLandInfo(d) {
       '<span title="' + addr + '">' + addr + '</span>' +
       '<button class="newwin-btn" onclick="openInNewWindow(\'' + safePnu + '\')">🔗 새창</button>' +
       '<button class="del-btn" data-pnu="' + escHtml(d.pnu) + '">삭제</button>' +
-      '<button class="move-btn" onclick="moveToLand(\'' + safePnu + '\')" style="padding:3px 8px; background:linear-gradient(135deg,#3a7bd5,#00d2ff); color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; white-space:nowrap; margin-left:4px;">📍 현위치</button>' +
+      '<button class="move-btn" onclick="moveToLand(\'' + safePnu + '\')" style="padding:3px 8px; background:linear-gradient(135deg,#3a7bd5,#00d2ff); color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600; white-space:nowrap; margin-left:4px;">📍 이동</button>' +
     '</div>'
   );
 
@@ -1950,6 +2098,9 @@ function addLandInfo(d) {
   $kv.append('<div class="land-kv-sec">📐 기본정보</div>');
   $kv.append(kv('지목', d.jimok));
   $kv.append(kv('면적', areaDisp + ' ㎡'));
+  if (d.age_class && d.age_class !== '-') {
+    $kv.append(kv('임상도(영급)', d.age_class + ' 영급'));
+  }
   $kv.append(kv('공시지가', fmt(d.jiga) !== '-' ? fmt(d.jiga) + ' 원/㎡' : '-'));
   var _jigoNum = parseFloat(String(d.jiga || '').replace(/,/g, ''));
   var _areaNum = parseFloat(rawArea || 0);
@@ -1979,7 +2130,7 @@ function addLandInfo(d) {
     '<td class="ned-val-regs">' + escHtml(d.other_regs || '-') + '</td>' +
     '<td>' +
       '<button class="mob-del-btn" data-pnu="' + escHtml(d.pnu) + '" style="margin-right:2px;">삭</button>' +
-      '<button class="mob-move-btn" onclick="moveToLand(\'' + safePnu + '\')" style="padding:2px 6px; background:#3a7bd5; color:#fff; border:none; border-radius:4px; font-size:10px;">위치</button>' +
+      '<button class="mob-move-btn" onclick="moveToLand(\'' + safePnu + '\')" style="padding:2px 6px; background:#3a7bd5; color:#fff; border:none; border-radius:4px; font-size:10px;">이동</button>' +
     '</td>'
   );
   $('#mobLandTbody').append($tr);
@@ -2808,25 +2959,8 @@ function fetchNedInfo(pnu) {
 }
 
 /* ===================================================
-   화면 전환 및 모달 제어 (전역)
+   인증 모달 (로그인/회원가입) 및 모달 제어
 =================================================== */
-window.switchView = function(view) {
-  if (view === 'map') {
-    $('#mapView, #sidePanel').show();
-    $('#communityArea').hide();
-    $('#navMap').addClass('active');
-    $('#navComm').removeClass('active');
-    try { map2d.updateSize(); } catch(e) {}
-  } else {
-    $('#mapView, #sidePanel').hide();
-    $('#communityArea').show();
-    $('#navMap').removeClass('active');
-    $('#navComm').addClass('active');
-    // 게시글 목록 새로고침 이벤트 발생
-    window.dispatchEvent(new CustomEvent('refreshPosts'));
-  }
-};
-
 window.openLoginModal = function() {
   $('#authModal').css('display', 'flex');
   $('#nickGroup').hide();

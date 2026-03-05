@@ -1,36 +1,42 @@
-# **토지정보 조회 시스템 & 커뮤니티 블루프린트**
+# Land Info Application Blueprint
 
-## **1. 개요**
-VWorld API를 활용한 지적정보 조회 시스템에 사용자 간 정보를 공유할 수 있는 게시판(커뮤니티) 기능을 통합한 웹 애플리케이션입니다.
+## Overview
+The "Land Info" application is a framework-less web tool designed for querying and visualizing land parcel information using the VWorld API (v2.0/3.0) and OpenLayers 3. It provides users with detailed cadastral data, environmental evaluations, and community features.
 
-## **2. 주요 기능**
-### **기능 1: 토지정보 조회 (기존)**
-*   **2D/3D 지도:** 일반 지도 및 3D 지형 지도 제공.
-*   **지적도 레이어:** 필지 경계 및 지번 표시.
-*   **상세 정보 조회:** 클릭 시 면적, 지목, 공시지가, 용도지역, 소유구분 등 조회.
-*   **데이터 수집:** 여러 필지를 선택하여 면적 합계 및 공시지가 총액 계산.
-*   **내보내기:** 수집된 데이터를 CSV 파일로 저장.
+## Architectural State (as of March 5, 2026)
 
-### **기능 2: 커뮤니티 게시판 (신규)**
-*   **게시글 작성:** 제목과 내용을 포함한 게시글 작성 기능.
-*   **게시글 목록:** 최신순 정렬 및 무한 스크롤(또는 페이징) 지원.
-*   **게시글 삭제:** 작성자 본인 및 관리자만 게시글 삭제 가능.
+### Core Features
+- **Cadastral Map Inquiry:** Users can click on the map to retrieve detailed land parcel info (PNU, address, land use, area, official land price, ownership, etc.).
+- **Thematic Map Layers:**
+  - Continuous Cadastral Map (`LP_PA_CBND_BUBUN`)
+  - Land Use Zones (Urban, Rural, etc.)
+  - ECVAM Environmental Grade (`nem_ecvam`)
+  - Eco-Natural Map (`eco_2015_g` via WMS)
+- **Unified Legend System:** 
+  - All active thematic map legends (Eco-Natural Map, ECVAM) are consolidated into a single container at the **bottom-left** of the map.
+  - Mobile UI transitions legends into a **compact, single-line horizontal row** at the bottom of the map area to avoid obstructing user interaction.
+- **PWA Support:** Service worker (`sw.js`) and manifest (`manifest.json`) for offline capabilities and homescreen installation.
+- **Community Module:** A basic community bulletin board for sharing land-related information.
 
-### **기능 3: 회원 관리 및 관리자 (신규)**
-*   **회원가입/로그인:** Firebase Auth를 이용한 이메일 기반 가입/로그인.
-*   **사용자 프로필:** 닉네임 설정 및 회원 상태 유지.
-*   **관리자 모드:** 모든 게시글에 대해 삭제 권한을 가짐.
+### Tech Stack
+- **Frontend:** Vanilla HTML, CSS (Modern Baseline), JavaScript (ES Modules).
+- **Mapping:** OpenLayers 3, VWorld JS API v2.0 (2D) & v3.0 (3D).
+- **Data APIs:** VWorld WFS/WMS, NED (National Enterprise Data) API.
+- **Environment:** Firebase Studio (Code OSS based).
 
-## **3. 기술 스택**
-*   **Frontend:** HTML5, CSS3 (Vanilla CSS, Baseline), JavaScript (ES Modules).
-*   **Maps API:** VWorld Open API (2D, 3D, WFS, NED API).
-*   **Backend/Auth:** Firebase Authentication, Cloud Firestore.
-*   **UI/UX:** 반응형 디자인 (모바일 최적화), 웹 컴포넌트 방식의 모듈화.
+### Design & UX
+- **Responsive Layout:** 
+  - Desktop: Sidebar on the right for results and controls.
+  - Mobile: Map fixed at top 55dvh, information panel as a bottom sheet (45dvh).
+- **Aesthetics:** Clean layout with multi-layered drop shadows, readable typography, and interactive icons.
 
-## **4. 개발 계획 및 단계**
-1.  **UI 레이아웃 변경:** 하단 탭 바(지도/게시판) 추가 및 화면 전환 로직 구현.
-2.  **Firebase 초기화:** Auth 및 Firestore 연결 설정.
-3.  **회원가입/로그인 구현:** 가입 모달 및 인증 상태 관리.
-4.  **게시판 기능 구현:** Firestore를 활용한 CRUD 로직 및 UI 바인딩.
-5.  **관리자 권한 부여:** 관리자 계정 식별 및 삭제 기능 활성화.
-6.  **검증:** 지도 조회 기능과의 충돌 여부 확인 및 최종 배포.
+## Recent Changes (March 5, 2026)
+- **Removal of Forest Age Map:** Eliminated all traces of the Forest Age Map (`LT_L_FRSTCL_AGE`) from UI, JS logic, and CSS.
+- **Legend Consolidation:** Refactored the legend system to use a unified container (`.legend-container-bottom`) positioned at the bottom-left.
+- **Mobile Optimization:** Implemented horizontal flex layout for legends on mobile to maximize map visibility during parcel inquiries.
+- **Code Cleanup:** Removed unused functions like `toggleForestAgeDirect` and corrected escaped strings in `themeData`.
+
+## Future Roadmap
+- Implement advanced data visualization for land price trends.
+- Enhance community features with image uploads and commenting.
+- Integrate user-specific saved locations.

@@ -34,7 +34,14 @@ The "Land Info" application is a framework-less web tool designed for querying a
 - **Removal of Forest Age Map:** Eliminated all traces of the Forest Age Map (`LT_L_FRSTCL_AGE`) from UI, JS logic, and CSS.
 - **Legend Consolidation:** Refactored the legend system to use a unified container (`.legend-container-bottom`) positioned at the bottom-left.
 - **Mobile Optimization:** Implemented horizontal flex layout for legends on mobile to maximize map visibility during parcel inquiries.
-- **Code Cleanup:** Removed unused functions like `toggleForestAgeDirect` and corrected escaped strings in `themeData`.
+- **Community Board Enhancements:**
+  - **Q&A Button Visibility:** Relocated the Q&A filter button to the second position in the category list for immediate visibility.
+  - **Vibrant UI Design:** Enhanced `post-card` and comment section styling with soft shadows, improved spacing, and modern typography.
+  - **Data Reset & Content Re-upload:** Cleared all existing posts and re-uploaded "도시계획개론" (Intro to Urban Planning) content from the `urbanplan` folder, organized into 8 chapters.
+  - **Category Button Layout:** Rearranged the board category filters into two rows for better accessibility:
+    - Row 1: [🏠 전체], [👻 익명게시판]
+    - Row 2: [🎓 도시계획개론], [💬 자유게시판], [❓ Q&A]
+- **Code Cleanup:** Removed the automatic `clearAllPostsOnce()` call from `main.js` which was causing data deletion on every load.
 
 ## Future Roadmap
 - Implement advanced data visualization for land price trends.

@@ -697,6 +697,13 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
   <!-- 사이드 패널 -->
   <div class="side" id="sidePanel">
 
+    <!-- 모바일 bottom sheet 핸들 (모든 탭 공통) -->
+    <div class="sheet-pull" id="sheetPull" onclick="toggleMobileSheet()">
+      <div class="sheet-pull-bar"></div>
+      <span class="sheet-pull-label" id="sheetPullLabel">토지정보를 클릭하여 조회하세요</span>
+      <span class="sheet-pull-toggle" id="sheetPullToggle">▼</span>
+    </div>
+
     <!-- 로그인 정보 바 -->
     <div class="auth-bar" id="authBar">
       <span id="userStatus">로그인이 필요합니다</span>
@@ -712,12 +719,7 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 
     <div id="landTabContent" style="display:flex; flex-direction:column; min-height:0; flex:1;">
       <!-- 기존 토지조회 관련 요소들 (주소검색 ~ 토지목록) -->
-      <!-- 모바일 bottom sheet 핸들 -->
-      <div class="sheet-pull" id="sheetPull" onclick="toggleMobileSheet()">
-        <div class="sheet-pull-bar"></div>
-        <span class="sheet-pull-label" id="sheetPullLabel">토지정보를 클릭하여 조회하세요</span>
-        <span class="sheet-pull-toggle" id="sheetPullToggle">▼</span>
-      </div>
+      <!-- (핸들 삭제됨) -->
 
       <!-- 헤더 -->
       <div class="hd" style="position:relative;">
@@ -2449,12 +2451,24 @@ function toggleMobileSheet() {
   var $side = $("#sidePanel");
   var $toggle = $("#sheetPullToggle");
   var $mapArea = $(".map-area");
+
+  // 커뮤니티나 품셈계산기로 확장된 상태인 경우
+  if ($side.hasClass("side-comm-expanded")) {
+    // 확장 해제 시 토지정보 탭으로 복귀하며 접기
+    switchTab('land');
+    $side.addClass("sheet-collapsed");
+    $toggle.text("▲");
+    $mapArea.css("height", "calc(100dvh - 44px)");
+    return;
+  }
+
   if ($side.hasClass("sheet-collapsed")) {
     // 펼치기 → 지도 55dvh 복원
     $side.removeClass("sheet-collapsed");
     $toggle.text("▼");
     $mapArea.css("height", "55dvh");
   } else {
+    // 접기 → 지도 전체화면
     $side.addClass("sheet-collapsed");
     $toggle.text("▲");
     $mapArea.css("height", "calc(100dvh - 44px)");

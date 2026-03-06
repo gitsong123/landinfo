@@ -181,6 +181,7 @@ window.switchTab = (tab) => {
         $priceTabContent.css('display', 'none');
         $mapPriceContainer.fadeOut(300); // 지도보기로 전환 시 웹 계산기 숨김
         $('#tabLandBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
+        $('#sheetPullLabel').text('토지정보를 클릭하여 조회하세요');
 
         if (isSmallScreen) {
             $sidePanel.removeClass('side-comm-expanded');
@@ -201,6 +202,7 @@ window.switchTab = (tab) => {
         $priceTabContent.css('display', 'none');
         $mapPriceContainer.fadeOut(300);
         $('#tabCommBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
+        $('#sheetPullLabel').text('💬 커뮤니티 게시판');
 
         // 웹 브라우저도 화면이 작으면 모바일처럼 슬라이드업
         if (isSmallScreen) {
@@ -226,6 +228,7 @@ window.switchTab = (tab) => {
         $landTabContent.hide();
         $commTabContent.hide();
         $priceTabContent.hide();
+        $('#sheetPullLabel').text('🧮 품셈계산기');
 
         if (!isSmallScreen) {
             // 웹(데스크탑): 지도영역에 품셈계산기 표시

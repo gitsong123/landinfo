@@ -1041,7 +1041,7 @@ function renderCalc(){
       <div class="ig">
         <div class="ic">
           <label>${unitName} *</label>
-          <div class="iw"><input type="number" id="aIn" placeholder="0" oninput="calc()" min="0" step="0.1" inputmode="decimal"></div>
+          <div class="iw"><input type="text" id="aIn" placeholder="0" oninput="calc()" inputmode="decimal"></div>
           <div class="ih">기준 <strong>${meta.base}${unitLabel}</strong> · 최소 <strong>${meta.min_val}${unitLabel}</strong></div>
         </div>
         <div class="ic">
@@ -1051,12 +1051,12 @@ function renderCalc(){
         </div>
         <div class="ic">
           <label>제경비 비율</label>
-          <div class="iw"><input type="number" id="ohIn" value="115" oninput="calc()" min="0" max="300" inputmode="numeric"><span class="iu">%</span></div>
+          <div class="iw"><input type="text" id="ohIn" value="115" oninput="calc()" inputmode="numeric"><span class="iu">%</span></div>
           <div class="ih">직접인건비 기준 <strong>110~120%</strong></div>
         </div>
         <div class="ic">
           <label>기술료 비율</label>
-          <div class="iw"><input type="number" id="tfIn" value="30" oninput="calc()" min="0" max="100" inputmode="numeric"><span class="iu">%</span></div>
+          <div class="iw"><input type="text" id="tfIn" value="30" oninput="calc()" inputmode="numeric"><span class="iu">%</span></div>
           <div class="ih">인건비+제경비 기준 <strong>20~40%</strong></div>
         </div>
       </div>
@@ -1083,7 +1083,7 @@ function renderCalc(){
           <div class="dual-amt-row">
             <!-- 품셈 기준 견적가 -->
             <div class="amt-box amt-calc">
-              <div class="amt-label">📐 품셈 기준 견적금액</div>
+              <div class="amt-label">📐 품셈 기준 견적금액 <span style="font-size:12px;opacity:0.7;">(VAT 별도)</span></div>
               <div class="amt-val" id="fAmt">—</div>
               <div class="amt-unit">원</div>
               <div class="amt-sub">십만원 미만 절삭</div>
@@ -1093,7 +1093,7 @@ function renderCalc(){
             </div>
             <!-- 제안 용역비 -->
             <div class="amt-box amt-proposal">
-              <div class="amt-label">💰 최종 제안 용역비</div>
+              <div class="amt-label">💰 최종 제안 용역비 <span style="font-size:12px;opacity:0.7;">(VAT 별도)</span></div>
               <div class="amt-proposal-input-wrap">
                 <input type="text" inputmode="numeric" pattern="[0-9,]*"
                        id="proposalAmt" placeholder="0"
@@ -1459,9 +1459,9 @@ function buildDetailModalHTML(c){
           <td class="nm" style="font-size:14px;color:var(--text3)">${basis}</td>
         </tr>`).join('')}
         <tr class="dt-sum"><td class="nm">합 계</td><td>${fmt(tot)}</td><td class="ratio-col">100%</td><td></td></tr>
-        <tr class="dt-total"><td class="nm">품셈 기준 견적금액 (십만원 미만 절삭)</td><td colspan="3" style="color:var(--green);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:20px">${fmt(fin)} 원</td></tr>
+        <tr class="dt-total"><td class="nm">품셈 기준 견적금액 (십만원 미만 절삭)</td><td colspan="3" style="color:var(--green);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:20px">${fmt(fin)} 원 <span style="font-size:13px;font-weight:400;color:var(--text3)">(VAT 별도)</span></td></tr>
         <tr style="background:rgba(26,95,186,0.08)"><td class="nm" style="color:var(--accent);font-weight:700">최종 제안 용역비</td>
-          <td colspan="3" style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:20px">${fmt(proposedAmt)} 원
+          <td colspan="3" style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:20px">${fmt(proposedAmt)} 원 <span style="font-size:13px;font-weight:400;color:var(--text3)">(VAT 별도)</span>
           <span style="font-size:14px;font-weight:400;color:var(--text3);margin-left:10px">(품셈 대비 ${(proposedAmt/fin*100).toFixed(1)}%)</span></td>
         </tr>
       </tbody>
@@ -1812,6 +1812,16 @@ function mobileTab(tab){
 }
 
 // Mobile: close sidebar after plan selection (patched into selectPlan below)
+
+// ── 모바일 입력 포커스 강제 해결 ──────────────────────────
+document.addEventListener('touchstart', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    // 이미 포커스된 경우 중복 처리 방지
+    if (document.activeElement !== e.target) {
+      e.target.focus();
+    }
+  }
+}, {passive: true});
 </script>
 
 <!-- ── 세부내역서 모달 ──────────────────────────────── -->

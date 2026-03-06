@@ -222,18 +222,22 @@ window.switchTab = (tab) => {
         updateWriteArea();
         refreshPosts();
     } else if (tab === 'price') {
+        // 모든 탭 컨텐츠 숨기기
+        $landTabContent.hide();
+        $commTabContent.hide();
+        $priceTabContent.hide();
+
         if (!isSmallScreen) {
             // 웹(데스크탑): 지도영역에 품셈계산기 표시
+            $landTabContent.show(); // 배경은 토지정보 탭 유지 (사이드바)
             $mapPriceContainer.css('display', 'flex').hide().fadeIn(300);
             if ($('#mapPriceIframe').attr('src') === 'about:blank') {
                 $('#mapPriceIframe').attr('src', 'price_ver2.html');
             }
-            // 탭 활성화 유지
+            // 탭 활성화 UI 업데이트
             $('#tabPriceBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
         } else {
-            // 모바일: 사이드 패널 내에서 슬라이드업
-            $landTabContent.css('display', 'none');
-            $commTabContent.css('display', 'none');
+            // 모바일: 사이드 패널 내에서 슬라이드업 (전체화면)
             $priceTabContent.css('display', 'flex');
             $('.price-mobile-ctrl').css('display', 'flex');
             $('#tabPriceBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');

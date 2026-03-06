@@ -1041,22 +1041,37 @@ function renderCalc(){
       <div class="ig">
         <div class="ic">
           <label>${unitName} *</label>
-          <div class="iw"><input type="text" id="aIn" placeholder="0" oninput="calc()" inputmode="decimal"></div>
+          <div class="iw" style="gap:5px;">
+            <input type="text" id="aIn" placeholder="0" onkeypress="if(event.key==='Enter')calc()" inputmode="decimal" style="flex:1;">
+            <button onclick="calc()" style="padding:0 12px; background:var(--accent); color:#fff; border:none; border-radius:4px; font-weight:700; cursor:pointer; font-size:14px;">확인</button>
+          </div>
           <div class="ih">기준 <strong>${meta.base}${unitLabel}</strong> · 최소 <strong>${meta.min_val}${unitLabel}</strong></div>
         </div>
         <div class="ic">
           <label>직접경비</label>
-          <div class="iw"><input type="text" id="deIn" value="${defDe}" oninput="fmtDe(this)" inputmode="numeric"><span class="iu">원</span></div>
+          <div class="iw" style="gap:5px;">
+            <input type="text" id="deIn" value="${defDe}" oninput="this.value=parseInt(this.value.replace(/[^0-9]/g,'')||0).toLocaleString('ko-KR')" onkeypress="if(event.key==='Enter')calc()" inputmode="numeric" style="flex:1;">
+            <span class="iu">원</span>
+            <button onclick="calc()" style="padding:0 8px; background:var(--surface3); color:var(--text); border:1px solid var(--border); border-radius:4px; font-weight:600; cursor:pointer; font-size:12px;">확인</button>
+          </div>
           <div class="ih">여비·인쇄비·도면구입 등</div>
         </div>
         <div class="ic">
           <label>제경비 비율</label>
-          <div class="iw"><input type="text" id="ohIn" value="115" oninput="calc()" inputmode="numeric"><span class="iu">%</span></div>
+          <div class="iw" style="gap:5px;">
+            <input type="text" id="ohIn" value="115" onkeypress="if(event.key==='Enter')calc()" inputmode="numeric" style="flex:1;">
+            <span class="iu">%</span>
+            <button onclick="calc()" style="padding:0 8px; background:var(--surface3); color:var(--text); border:1px solid var(--border); border-radius:4px; font-weight:600; cursor:pointer; font-size:12px;">확인</button>
+          </div>
           <div class="ih">직접인건비 기준 <strong>110~120%</strong></div>
         </div>
         <div class="ic">
           <label>기술료 비율</label>
-          <div class="iw"><input type="text" id="tfIn" value="30" oninput="calc()" inputmode="numeric"><span class="iu">%</span></div>
+          <div class="iw" style="gap:5px;">
+            <input type="text" id="tfIn" value="30" onkeypress="if(event.key==='Enter')calc()" inputmode="numeric" style="flex:1;">
+            <span class="iu">%</span>
+            <button onclick="calc()" style="padding:0 8px; background:var(--surface3); color:var(--text); border:1px solid var(--border); border-radius:4px; font-weight:600; cursor:pointer; font-size:12px;">확인</button>
+          </div>
           <div class="ih">인건비+제경비 기준 <strong>20~40%</strong></div>
         </div>
       </div>

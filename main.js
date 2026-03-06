@@ -164,25 +164,76 @@ window.setCategory = (cat, btn) => {
 };
 
 window.switchTab = (tab) => {
+    const isSmallScreen = window.innerWidth <= 768;
+    const $sidePanel = $('#sidePanel');
+    const $commTabContent = $('#commTabContent');
+    const $priceTabContent = $('#priceTabContent');
+    const $landTabContent = $('#landTabContent');
+    const $mapArea = $('.map-area');
+    
+    // 탭 버튼 스타일 초기화
+    $('.active-tab').removeClass('active-tab').css({ 'background': '#fff', 'border-bottom': 'none', 'color': '#666' });
+
     if (tab === 'land') {
-        $('#landTabContent').css('display', 'flex');
-        $('#commTabContent').css('display', 'none');
+        $landTabContent.css('display', 'flex');
+        $commTabContent.css('display', 'none').removeClass('comm-slide-up');
+        $priceTabContent.css('display', 'none');
         $('#tabLandBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
-        $('#tabCommBtn').css({ 'background': '#fff', 'border-bottom': 'none', 'color': '#666' }).removeClass('active-tab');
-    } else {
-        $('#landTabContent').css('display', 'none');
-        $('#commTabContent').css('display', 'flex');
-        $('#tabCommBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
-        $('#tabLandBtn').css({ 'background': '#fff', 'border-bottom': 'none', 'color': '#666' }).removeClass('active-tab');
         
-        // 검색창 엔터 이벤트 연결
+        if (isSmallScreen) {
+            $sidePanel.removeClass('side-comm-expanded');
+            $sidePanel.css({ 'top': '55dvh', 'height': '45dvh' });
+            if ($sidePanel.hasClass('sheet-collapsed')) {
+                $mapArea.css("height", "calc(100dvh - 44px)");
+            } else {
+                $mapArea.css("height", "55dvh");
+            }
+        }
+    } else if (tab === 'comm') {
+        $landTabContent.css('display', 'none');
+        $commTabContent.css('display', 'flex').addClass('comm-slide-up');
+        $priceTabContent.css('display', 'none');
+        $('#tabCommBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
+        
+        if (isSmallScreen) {
+            $sidePanel.addClass('side-comm-expanded').removeClass('sheet-collapsed');
+            $sidePanel.css({ 'top': '0', 'height': '100dvh' });
+            $("#sheetPullToggle").text("▼");
+            $mapArea.css("height", "0");
+        }
+
         $('#commSearchInput').off('keypress').on('keypress', (e) => {
             if (e.which === 13) refreshPosts();
         });
 
         updateWriteArea();
         refreshPosts();
+    } else if (tab === 'price') {
+        if (!isSmallScreen) {
+            // 웹(데스크탑)에서는 새창으로 열기
+            window.open('price_ver2.html', '_blank', 'width=1200,height=800,menubar=no,toolbar=no,location=no');
+            // 탭은 기존 'land'로 유지하거나 커뮤니티로 유지 (사용자 편의)
+            return;
+        } else {
+            // 모바일에서는 커뮤니티처럼 슬라이드창으로 표시
+            $landTabContent.css('display', 'none');
+            $commTabContent.css('display', 'none');
+            $priceTabContent.css('display', 'flex');
+            $('.price-mobile-ctrl').css('display', 'flex');
+            $('#tabPriceBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
+            
+            if ($('#priceIframe').attr('src') === 'about:blank') {
+                $('#priceIframe').attr('src', 'price_ver2.html');
+            }
+
+            $sidePanel.addClass('side-comm-expanded').removeClass('sheet-collapsed');
+            $sidePanel.css({ 'top': '0', 'height': '100dvh' });
+            $("#sheetPullToggle").text("▼");
+            $mapArea.css("height", "0");
+        }
     }
+    // 지도 크기 업데이트
+    setTimeout(() => { if(window.map2d) window.map2d.updateSize(); }, 450);
 };
 
 /* ===================================================

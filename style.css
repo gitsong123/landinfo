@@ -84,4 +84,20 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     .search-row{order:6;}
     .opt-table{order:7;}
     .theme-panel{order:10; background:#f9f9f9;}
+
+    /* 커뮤니티 확장 시 슬라이드 업 효과 */
+    .side.side-comm-expanded {
+        top: 10dvh !important;
+        height: 90vh !important;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+}
+
+/* 커뮤니티 컨텐츠 진입 애니메이션 */
+@keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.comm-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
 }

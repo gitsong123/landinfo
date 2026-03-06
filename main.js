@@ -233,7 +233,7 @@ window.switchTab = (tab) => {
         if (!isSmallScreen) {
             // 웹(데스크탑): 지도영역에 품셈계산기 표시
             $landTabContent.show(); // 배경은 토지정보 탭 유지 (사이드바)
-            $mapPriceContainer.css('display', 'flex').hide().fadeIn(300);
+            $mapPriceContainer.show().css({ 'display': 'flex', 'z-index': 3000 });
             if ($('#mapPriceIframe').attr('src') === 'about:blank') {
                 $('#mapPriceIframe').attr('src', 'price_ver2.html');
             }

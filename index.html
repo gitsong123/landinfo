@@ -444,9 +444,27 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
     box-shadow:0 -4px 24px rgba(0,0,0,.25);
     background:#f4f6fb;
     overflow:hidden;
-    transition: all .4s cubic-bezier(.25,.8,.25,1);
+    transition: all 0.4s cubic-bezier(.25,.8,.25,1);
     /* 하단 주소창 및 Safe Area 완벽 대응 (실제 스페이서 활용으로 변경) */
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  .side.side-comm-expanded {
+    top: 0 !important;
+    height: 100dvh !important;
+    border-radius: 0;
+    z-index: 1200;
+    pointer-events: auto; /* 터치 이벤트 허용 보장 */
+  }
+  #priceIframe {
+    pointer-events: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .comm-slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
   .side .mob-bottom-spacer { display: block !important; order: 99; height: 200px; }
   .footer { order: 90; }
@@ -650,6 +668,15 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
           <div class="eco-legend-row"><span class="eco-chip ecvam-gr5"></span> 5등</div>
         </div>
       </div>
+    </div>
+
+    <!-- 웹(데스크탑)용 지도영역 품셈계산기 컨테이너 -->
+    <div id="mapPriceContainer" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#fff; z-index:1100; flex-direction:column;">
+      <div style="padding:15px 20px; background:#3a7bd5; color:#fff; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <span style="font-weight:700; font-size:16px;">🧮 품셈계산기 (표준품셈 기반)</span>
+        <button onclick="closeMapPrice()" style="background:rgba(255,255,255,0.2); border:none; color:#fff; padding:6px 15px; border-radius:6px; cursor:pointer; font-weight:700; font-size:13px; transition:background 0.2s;">✕ 지도보기</button>
+      </div>
+      <iframe id="mapPriceIframe" src="about:blank" style="width:100%; flex:1; border:none;"></iframe>
     </div>
   </div>
 

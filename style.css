@@ -4,13 +4,13 @@ html,body{height:100%;margin:0;padding:0;overflow:hidden;font-family:'Malgun Got
 .wrap{display:flex;height:100vh;width:100vw;}
 
 /* ── 지도 영역 ── */
-.map-area{flex:1;position:relative;height:100%;}
+.map-area{flex:1;position:relative;height:100%; transition: height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);}
 #vmap,#ol3map{width:100%;height:100%;position:absolute;top:0;left:0;}
 .map-ctrl{position:absolute;top:10px;left:10px;z-index:999;background:rgba(255,255,255,.92);border-radius:8px;padding:6px 10px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
 .map-ctrl select{border:none;background:transparent;font-weight:600;font-size:13px;cursor:pointer;outline:none;}
 
 /* ── 사이드 패널 ── */
-.side{width:360px;min-width:300px;display:flex;flex-direction:column;height:100%;border-left:2px solid #dde1f0;background:#f4f6fb;overflow:hidden;}
+.side{width:360px;min-width:300px;display:flex;flex-direction:column;height:100%;border-left:2px solid #dde1f0;background:#f4f6fb;overflow:hidden; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);}
 
 /* 헤더 & 검색 */
 .hd{background:linear-gradient(135deg,#3a7bd5,#00d2ff);color:#fff;padding:16px 18px;flex-shrink:0;}

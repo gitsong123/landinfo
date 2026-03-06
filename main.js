@@ -170,7 +170,8 @@ window.switchTab = (tab) => {
     const $priceTabContent = $('#priceTabContent');
     const $landTabContent = $('#landTabContent');
     const $mapArea = $('.map-area');
-    
+    const $mapPriceContainer = $('#mapPriceContainer');
+
     // 탭 버튼 스타일 초기화
     $('.active-tab').removeClass('active-tab').css({ 'background': '#fff', 'border-bottom': 'none', 'color': '#666' });
 
@@ -178,8 +179,9 @@ window.switchTab = (tab) => {
         $landTabContent.css('display', 'flex');
         $commTabContent.css('display', 'none').removeClass('comm-slide-up');
         $priceTabContent.css('display', 'none');
+        $mapPriceContainer.fadeOut(300); // 지도보기로 전환 시 웹 계산기 숨김
         $('#tabLandBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
-        
+
         if (isSmallScreen) {
             $sidePanel.removeClass('side-comm-expanded');
             $sidePanel.css({ 'top': '55dvh', 'height': '45dvh' });
@@ -188,18 +190,29 @@ window.switchTab = (tab) => {
             } else {
                 $mapArea.css("height", "55dvh");
             }
+        } else {
+            // 웹(데스크탑) 리셋
+            $sidePanel.css({ 'top': '0', 'height': '100vh' });
+            $mapArea.css("height", "100vh");
         }
     } else if (tab === 'comm') {
         $landTabContent.css('display', 'none');
         $commTabContent.css('display', 'flex').addClass('comm-slide-up');
         $priceTabContent.css('display', 'none');
+        $mapPriceContainer.fadeOut(300);
         $('#tabCommBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
-        
+
+        // 웹 브라우저도 화면이 작으면 모바일처럼 슬라이드업
         if (isSmallScreen) {
             $sidePanel.addClass('side-comm-expanded').removeClass('sheet-collapsed');
             $sidePanel.css({ 'top': '0', 'height': '100dvh' });
             $("#sheetPullToggle").text("▼");
             $mapArea.css("height", "0");
+        } else {
+            // 데스크탑 모드: 패널 크기 고정 (기본 CSS에 따름)
+            $sidePanel.removeClass('side-comm-expanded');
+            $sidePanel.css({ 'top': '0', 'height': '100vh' });
+            $mapArea.css("height", "100vh");
         }
 
         $('#commSearchInput').off('keypress').on('keypress', (e) => {
@@ -210,18 +223,21 @@ window.switchTab = (tab) => {
         refreshPosts();
     } else if (tab === 'price') {
         if (!isSmallScreen) {
-            // 웹(데스크탑)에서는 새창으로 열기
-            window.open('price_ver2.html', '_blank', 'width=1200,height=800,menubar=no,toolbar=no,location=no');
-            // 탭은 기존 'land'로 유지하거나 커뮤니티로 유지 (사용자 편의)
-            return;
+            // 웹(데스크탑): 지도영역에 품셈계산기 표시
+            $mapPriceContainer.css('display', 'flex').hide().fadeIn(300);
+            if ($('#mapPriceIframe').attr('src') === 'about:blank') {
+                $('#mapPriceIframe').attr('src', 'price_ver2.html');
+            }
+            // 탭 활성화 유지
+            $('#tabPriceBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
         } else {
-            // 모바일에서는 커뮤니티처럼 슬라이드창으로 표시
+            // 모바일: 사이드 패널 내에서 슬라이드업
             $landTabContent.css('display', 'none');
             $commTabContent.css('display', 'none');
             $priceTabContent.css('display', 'flex');
             $('.price-mobile-ctrl').css('display', 'flex');
             $('#tabPriceBtn').css({ 'background': '#f4f6fb', 'border-bottom': '2px solid #3a7bd5', 'color': '#3a7bd5' }).addClass('active-tab');
-            
+
             if ($('#priceIframe').attr('src') === 'about:blank') {
                 $('#priceIframe').attr('src', 'price_ver2.html');
             }
@@ -236,6 +252,10 @@ window.switchTab = (tab) => {
     setTimeout(() => { if(window.map2d) window.map2d.updateSize(); }, 450);
 };
 
+// 웹 품셈계산기 닫기 (지도보기 전환)
+window.closeMapPrice = () => {
+    switchTab('land');
+};
 /* ===================================================
    게시판 관련 로직
 =================================================== */

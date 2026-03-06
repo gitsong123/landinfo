@@ -1007,12 +1007,19 @@ function toggleItem(i){
   calc();
 }
 
+function fmtDe(el){
+  const val = el.value.replace(/[^0-9]/g,'');
+  el.value = val ? parseInt(val).toLocaleString('ko-KR') : '';
+  calc();
+}
+
 function renderCalc(){
   const plan=D.plans[cPlan];
   const meta=plan.meta;
   const isArea=meta.unit==='면적';
   const unitLabel=meta.unit_label;
   const unitName=isArea?'계획면적':'계획인구';
+  const defDe = (plan.direct_exp_default||8000000).toLocaleString('ko-KR');
 
   let betaHtml='';
   if(isArea){
@@ -1034,22 +1041,22 @@ function renderCalc(){
       <div class="ig">
         <div class="ic">
           <label>${unitName} *</label>
-          <div class="iw"><input type="number" id="aIn" placeholder="0" oninput="calc()" min="0" step="0.1"></div>
+          <div class="iw"><input type="number" id="aIn" placeholder="0" oninput="calc()" min="0" step="0.1" inputmode="decimal"></div>
           <div class="ih">기준 <strong>${meta.base}${unitLabel}</strong> · 최소 <strong>${meta.min_val}${unitLabel}</strong></div>
         </div>
         <div class="ic">
           <label>직접경비</label>
-          <div class="iw"><input type="number" id="deIn" value="${plan.direct_exp_default||8000000}" oninput="calc()"><span class="iu">원</span></div>
+          <div class="iw"><input type="text" id="deIn" value="${defDe}" oninput="fmtDe(this)" inputmode="numeric"><span class="iu">원</span></div>
           <div class="ih">여비·인쇄비·도면구입 등</div>
         </div>
         <div class="ic">
           <label>제경비 비율</label>
-          <div class="iw"><input type="number" id="ohIn" value="115" oninput="calc()" min="0" max="300"><span class="iu">%</span></div>
+          <div class="iw"><input type="number" id="ohIn" value="115" oninput="calc()" min="0" max="300" inputmode="numeric"><span class="iu">%</span></div>
           <div class="ih">직접인건비 기준 <strong>110~120%</strong></div>
         </div>
         <div class="ic">
           <label>기술료 비율</label>
-          <div class="iw"><input type="number" id="tfIn" value="30" oninput="calc()" min="0" max="100"><span class="iu">%</span></div>
+          <div class="iw"><input type="number" id="tfIn" value="30" oninput="calc()" min="0" max="100" inputmode="numeric"><span class="iu">%</span></div>
           <div class="ih">인건비+제경비 기준 <strong>20~40%</strong></div>
         </div>
       </div>
@@ -1219,7 +1226,8 @@ function calc(){
   
   const ohR=(parseFloat(document.getElementById('ohIn')?.value)||115)/100;
   const tfR=(parseFloat(document.getElementById('tfIn')?.value)||30)/100;
-  const de=parseInt(document.getElementById('deIn')?.value)||8000000;
+  const deRaw = document.getElementById('deIn')?.value || '0';
+  const de = parseInt(deRaw.replace(/[^0-9]/g,'')) || 0;
   const wArr=[wages['기술사']||467217,wages['특급']||373353,wages['고급']||310884,wages['중급']||295138,wages['초급']||235459,wages['보조원']||250087];
   
   let base=[0,0,0,0,0,0],tech=[0,0,0,0,0,0];
